@@ -1,12 +1,53 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { searchPlaces, placeToDirectoryListing } from '@/lib/google-places';
 import type { TradeCategory } from '@/types/database';
 import { TRADE_CATEGORIES, tradeCategoryLabel } from '@/lib/utils';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+// Server-side Supabase for logging (no cookies needed)
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+// Log a search to Supabase (fire-and-forget)
+async function logSearch(params: {
+  trade_category?: string;
+  location?: string;
+  state?: string;
+  problem_description?: string;
+  raw_query: string;
+  results_count: number;
+  results_json?: unknown;
+  ip_address?: string;
+  user_agent?: string;
+}) {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    await supabase.from('mojo_searches').insert({
+      trade_category: params.trade_category || null,
+      location: params.location || null,
+      state: params.state || null,
+      problem_description: params.problem_description || null,
+      raw_query: params.raw_query,
+      results_count: params.results_count,
+      results_json: params.results_json || null,
+      ip_address: params.ip_address || null,
+      user_agent: params.user_agent || null,
+    });
+  } catch (err) {
+    console.error('Failed to log search:', err);
+  }
+}
 
 // Tool definition for Mojo to search for tradies
 const searchTool: Anthropic.Tool = {
@@ -38,15 +79,68 @@ const searchTool: Anthropic.Tool = {
 
 export async function POST(request: Request) {
   try {
-    const { query, history } = await request.json();
+    const body = await request.json();
+    const { query, trade, location, problem, history } = body;
 
     if (!query) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      // Fallback if no API key - do a basic keyword search
-      return handleFallbackSearch(query);
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+    const ua = request.headers.get('user-agent') || '';
+
+    // If guided flow provided trade + location directly, skip Claude and go straight to search
+    if (trade && location) {
+      const tradeCategory = trade as TradeCategory;
+      const places = await searchPlaces(tradeCategory, location);
+      const results = places.slice(0, 8).map((p) => placeToDirectoryListing(p, tradeCategory));
+      const tradeLabel = tradeCategoryLabel(tradeCategory);
+
+      const frontendTradies = results.map((t) => ({
+        id: t.place_id,
+        business_name: t.business_name,
+        slug: '',
+        trade_category: t.trade_category,
+        short_description: t.formatted_address,
+        average_rating: t.rating,
+        review_count: t.review_count,
+        suburb: t.suburb,
+        state: t.state,
+        phone: t.phone,
+        website: t.website,
+        place_id: t.place_id,
+      }));
+
+      // Log to Supabase (fire and forget)
+      logSearch({
+        trade_category: trade,
+        location,
+        problem_description: problem,
+        raw_query: query,
+        results_count: frontendTradies.length,
+        results_json: frontendTradies.slice(0, 5).map(t => ({
+          name: t.business_name,
+          rating: t.average_rating,
+          reviews: t.review_count,
+          suburb: t.suburb,
+        })),
+        ip_address: ip,
+        user_agent: ua,
+      });
+
+      const message = frontendTradies.length > 0
+        ? `Found ${frontendTradies.length} ${tradeLabel.toLowerCase()}s near ${location}! Here are the top results — you can call them directly or check their website.`
+        : `I couldn't find any ${tradeLabel.toLowerCase()}s in ${location} right now. Try a nearby suburb or larger city.`;
+
+      return NextResponse.json({
+        message,
+        tradies: frontendTradies,
+      });
+    }
+
+    // No direct trade/location — use Claude to parse the query
+    if (!anthropic) {
+      return handleFallbackSearch(query, ip, ua);
     }
 
     const systemPrompt = `You are Mojo, the friendly AI assistant for TradeMojo — Australia's smartest trade directory.
@@ -80,7 +174,6 @@ Rules:
 
     messages.push({ role: 'user', content: query });
 
-    // First call - may trigger tool use
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
@@ -89,9 +182,10 @@ Rules:
       messages,
     });
 
-    // Check if Mojo wants to search
     let mojoMessage = '';
     let tradieResults: ReturnType<typeof placeToDirectoryListing>[] = [];
+    let searchedTrade = '';
+    let searchedLocation = '';
 
     for (const block of response.content) {
       if (block.type === 'text') {
@@ -103,18 +197,12 @@ Rules:
           state?: string;
         };
 
-        // Actually search Google Places
-        const places = await searchPlaces(
-          input.trade_category,
-          input.location,
-          input.state || ''
-        );
+        searchedTrade = input.trade_category;
+        searchedLocation = input.location;
 
-        tradieResults = places
-          .slice(0, 6)
-          .map((p) => placeToDirectoryListing(p, input.trade_category));
+        const places = await searchPlaces(input.trade_category, input.location, input.state || '');
+        tradieResults = places.slice(0, 8).map((p) => placeToDirectoryListing(p, input.trade_category));
 
-        // Send tool result back to get Mojo's response
         const followUp = await anthropic.messages.create({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 400,
@@ -154,14 +242,15 @@ Rules:
     }
 
     if (!mojoMessage) {
-      mojoMessage = "I found some results for you! Check them out below.";
+      mojoMessage = tradieResults.length > 0
+        ? "Found some results for you! Check them out below."
+        : "I couldn't find any results. Try a different area or trade.";
     }
 
-    // Convert to the format the frontend expects
     const frontendTradies = tradieResults.map((t) => ({
       id: t.place_id,
       business_name: t.business_name,
-      slug: '', // Google Places results don't have slugs
+      slug: '',
       trade_category: t.trade_category,
       short_description: t.formatted_address,
       average_rating: t.rating,
@@ -173,6 +262,22 @@ Rules:
       place_id: t.place_id,
     }));
 
+    // Log to Supabase
+    logSearch({
+      trade_category: searchedTrade || undefined,
+      location: searchedLocation || undefined,
+      raw_query: query,
+      results_count: frontendTradies.length,
+      results_json: frontendTradies.slice(0, 5).map(t => ({
+        name: t.business_name,
+        rating: t.average_rating,
+        reviews: t.review_count,
+        suburb: t.suburb,
+      })),
+      ip_address: ip,
+      user_agent: ua,
+    });
+
     return NextResponse.json({
       message: mojoMessage,
       tradies: frontendTradies,
@@ -181,8 +286,7 @@ Rules:
     console.error('Mojo API error:', error);
     return NextResponse.json(
       {
-        message:
-          "G'day! I'm having a bit of trouble right now. Try browsing by category below, or give me another go in a sec!",
+        message: "G'day! I'm having a bit of trouble right now. Try again in a sec!",
         tradies: [],
       },
       { status: 500 }
@@ -191,10 +295,9 @@ Rules:
 }
 
 // Fallback search when no Anthropic key is set
-async function handleFallbackSearch(query: string) {
+async function handleFallbackSearch(query: string, ip: string, ua: string) {
   const queryLower = query.toLowerCase();
 
-  // Try to extract trade from query
   let detectedTrade: TradeCategory | null = null;
   for (const trade of TRADE_CATEGORIES) {
     const label = tradeCategoryLabel(trade as TradeCategory).toLowerCase();
@@ -204,7 +307,6 @@ async function handleFallbackSearch(query: string) {
     }
   }
 
-  // Try to extract location
   const cities = [
     'sydney', 'melbourne', 'brisbane', 'perth', 'adelaide', 'gold coast',
     'canberra', 'newcastle', 'hobart', 'darwin', 'cairns', 'townsville',
@@ -213,40 +315,65 @@ async function handleFallbackSearch(query: string) {
   let detectedLocation = '';
   for (const city of cities) {
     if (queryLower.includes(city)) {
-      detectedLocation = city.charAt(0).toUpperCase() + city.slice(1);
+      detectedLocation = city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       break;
     }
   }
 
   if (detectedTrade && detectedLocation) {
     const places = await searchPlaces(detectedTrade, detectedLocation);
-    const results = places.slice(0, 6).map((p) => placeToDirectoryListing(p, detectedTrade!));
+    const results = places.slice(0, 8).map((p) => placeToDirectoryListing(p, detectedTrade!));
+
+    const frontendTradies = results.map((t) => ({
+      id: t.place_id,
+      business_name: t.business_name,
+      slug: '',
+      trade_category: t.trade_category,
+      short_description: t.formatted_address,
+      average_rating: t.rating,
+      review_count: t.review_count,
+      suburb: t.suburb,
+      state: t.state,
+      phone: t.phone,
+      website: t.website,
+      place_id: t.place_id,
+    }));
+
+    logSearch({
+      trade_category: detectedTrade,
+      location: detectedLocation,
+      raw_query: query,
+      results_count: frontendTradies.length,
+      results_json: frontendTradies.slice(0, 5).map(t => ({
+        name: t.business_name,
+        rating: t.average_rating,
+        reviews: t.review_count,
+      })),
+      ip_address: ip,
+      user_agent: ua,
+    });
 
     return NextResponse.json({
-      message: `Found ${results.length} ${tradeCategoryLabel(detectedTrade).toLowerCase()}s in ${detectedLocation}! Here are the top results:`,
-      tradies: results.map((t) => ({
-        id: t.place_id,
-        business_name: t.business_name,
-        slug: '',
-        trade_category: t.trade_category,
-        short_description: t.formatted_address,
-        average_rating: t.rating,
-        review_count: t.review_count,
-        suburb: t.suburb,
-        state: t.state,
-        phone: t.phone,
-        website: t.website,
-        place_id: t.place_id,
-      })),
+      message: `Found ${results.length} ${tradeCategoryLabel(detectedTrade).toLowerCase()}s in ${detectedLocation}!`,
+      tradies: frontendTradies,
     });
   }
+
+  logSearch({
+    trade_category: detectedTrade || undefined,
+    location: detectedLocation || undefined,
+    raw_query: query,
+    results_count: 0,
+    ip_address: ip,
+    user_agent: ua,
+  });
 
   return NextResponse.json({
     message: detectedTrade
       ? `I can find ${tradeCategoryLabel(detectedTrade).toLowerCase()}s for you! Which area are you in?`
       : detectedLocation
-        ? `Looking in ${detectedLocation} — what kind of tradie do you need? (plumber, electrician, builder, etc.)`
-        : "G'day! Tell me what trade you need and where you are, and I'll find the best options. For example: 'I need a plumber in Brisbane'",
+        ? `Looking in ${detectedLocation} — what kind of tradie do you need?`
+        : "G'day! Tell me what trade you need and where you are, and I'll find the best options.",
     tradies: [],
   });
 }

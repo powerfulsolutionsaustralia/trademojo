@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
+import MojoWidget from '@/components/mojo/MojoWidget';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -71,6 +72,7 @@ export default function RootLayout({
         className={`${inter.variable} ${outfit.variable} antialiased bg-background text-foreground`}
       >
         {children}
+        <MojoWidget />
       </body>
     </html>
   );

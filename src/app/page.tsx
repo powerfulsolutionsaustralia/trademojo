@@ -1,8 +1,7 @@
 import Navbar from '@/components/directory/Navbar';
-import MojoSearch from '@/components/directory/MojoSearch';
 import TradeCategories from '@/components/directory/TradeCategories';
 import Footer from '@/components/directory/Footer';
-import { MapPin, Search, Phone, Star, Shield, ArrowRight, Sparkles, Users, Zap } from 'lucide-react';
+import { MapPin, Phone, Star, Shield, ArrowRight, Sparkles, Users, Zap } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 export default function Home() {
@@ -10,9 +9,9 @@ export default function Home() {
     <>
       <Navbar />
 
-      {/* Hero Section — Clean, search-focused */}
+      {/* Hero Section */}
       <section className="relative py-16 md:py-24 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-mojo/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
           <h1 className="font-[family-name:var(--font-outfit)] text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight">
@@ -21,22 +20,15 @@ export default function Home() {
           </h1>
 
           <p className="text-muted text-lg max-w-xl mx-auto mb-8">
-            Search real businesses with real reviews. Call directly, visit their
-            website, or ask Mojo to find the right tradie for you.
+            Search real businesses with real reviews across Australia.
+            Call directly, check their website, or ask Mojo for help.
           </p>
 
-          <MojoSearch />
-
-          {/* Quick stats */}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-muted">
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-primary" />
-              <span>Powered by Google</span>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
+          {/* Quick trust badges */}
+          <div className="flex flex-wrap items-center justify-center gap-5 text-sm text-muted mb-10">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 text-yellow-500" />
-              <span>Real Reviews</span>
+              <span>Real Google Reviews</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
@@ -45,8 +37,19 @@ export default function Home() {
             </div>
             <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-mojo" />
+              <Shield className="w-4 h-4 text-primary" />
               <span>100% Free</span>
+            </div>
+          </div>
+
+          {/* Mojo CTA */}
+          <div className="inline-flex items-center gap-3 bg-mojo/10 border border-mojo/20 rounded-2xl px-6 py-3">
+            <div className="w-10 h-10 rounded-full bg-mojo flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-semibold text-foreground">Need help finding the right tradie?</div>
+              <div className="text-xs text-muted">Click <strong className="text-mojo">Ask Mojo</strong> in the bottom corner</div>
             </div>
           </div>
         </div>
@@ -57,7 +60,7 @@ export default function Home() {
         <TradeCategories />
       </div>
 
-      {/* How It Works — Simplified */}
+      {/* How It Works */}
       <section className="py-16 px-4 bg-surface">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-[family-name:var(--font-outfit)] text-2xl md:text-3xl font-bold text-foreground mb-2 text-center">
@@ -72,22 +75,22 @@ export default function Home() {
               {
                 num: '1',
                 icon: <Sparkles className="w-6 h-6" />,
-                title: 'Search or Ask Mojo',
-                desc: 'Type what you need — like "plumber in Brisbane" — or browse by trade category.',
+                title: 'Tell Mojo What You Need',
+                desc: 'Tap Ask Mojo and tell us what trade you need, where you are, and what the job is.',
                 color: 'text-mojo bg-mojo/10',
               },
               {
                 num: '2',
                 icon: <Users className="w-6 h-6" />,
-                title: 'Compare Results',
-                desc: 'See real businesses with Google ratings, reviews, phone numbers, and websites.',
+                title: 'Get Real Results',
+                desc: 'See verified businesses from Google with ratings, reviews, phone numbers, and websites.',
                 color: 'text-primary bg-primary/10',
               },
               {
                 num: '3',
                 icon: <Phone className="w-6 h-6" />,
                 title: 'Call or Visit',
-                desc: 'Call the tradie directly, check their website, or view their location on Google Maps.',
+                desc: 'Call the tradie directly from the results, visit their website, or check them on Google Maps.',
                 color: 'text-accent bg-accent/10',
               },
             ].map((step) => (
