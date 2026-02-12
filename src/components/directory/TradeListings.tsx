@@ -78,10 +78,18 @@ export default function TradeListings({ trade, location, state, limit, showTitle
   if (error || listings.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted">
-          No {tradeCategoryLabel(trade).toLowerCase()}s found
-          {location ? ` in ${location}` : ''} yet. Check back soon!
-        </p>
+        <div className="max-w-md mx-auto bg-surface rounded-2xl border border-border p-8">
+          <div className="text-3xl mb-3">🔍</div>
+          <h3 className="font-semibold text-foreground mb-2">
+            {tradeCategoryLabel(trade)}s{location && location !== 'Australia' ? ` in ${location}` : ''}
+          </h3>
+          <p className="text-muted text-sm mb-4">
+            We&apos;re setting up live listings for this area. In the meantime,
+            try asking Mojo on our{' '}
+            <a href="/" className="text-primary hover:underline">homepage</a>{' '}
+            or search a specific city below.
+          </p>
+        </div>
       </div>
     );
   }
