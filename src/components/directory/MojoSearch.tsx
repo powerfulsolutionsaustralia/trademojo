@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, Sparkles, Send, MapPin, ArrowRight } from 'lucide-react';
+import { Search, Sparkles, Send, MapPin, Phone, Star, Globe, ExternalLink } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface MojoMessage {
@@ -20,6 +20,9 @@ interface MojoTradieResult {
   review_count: number;
   suburb: string;
   state: string;
+  phone?: string;
+  website?: string;
+  place_id?: string;
 }
 
 export default function MojoSearch() {
@@ -100,7 +103,7 @@ export default function MojoSearch() {
 
       {/* Chat Messages */}
       {isChat && (
-        <div className="bg-surface rounded-2xl border border-border mb-4 max-h-96 overflow-y-auto p-4 space-y-4">
+        <div className="bg-surface rounded-2xl border border-border mb-4 max-h-[500px] overflow-y-auto p-4 space-y-4">
           {messages.map((msg, i) => (
             <div
               key={i}
@@ -131,41 +134,83 @@ export default function MojoSearch() {
                 {msg.tradies && msg.tradies.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {msg.tradies.map((tradie) => (
-                      <a
+                      <div
                         key={tradie.id}
-                        href={`/t/${tradie.slug}`}
-                        className="block bg-white rounded-xl p-3 border border-border hover:border-primary hover:shadow-md transition-all"
+                        className="bg-white rounded-xl p-3 border border-border shadow-sm"
                       >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold text-foreground text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-foreground text-sm truncate">
                               {tradie.business_name}
                             </h4>
                             <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
-                              <MapPin className="w-3 h-3" />
-                              {tradie.suburb}, {tradie.state}
-                            </p>
-                            <p className="text-xs text-foreground/70 mt-1">
-                              {tradie.short_description}
+                              <MapPin className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{tradie.short_description || `${tradie.suburb}, ${tradie.state}`}</span>
                             </p>
                           </div>
                           <div className="flex items-center gap-1 text-xs shrink-0">
-                            <span className="text-yellow-500">★</span>
-                            <span className="font-semibold">
-                              {tradie.average_rating?.toFixed(1) || 'New'}
-                            </span>
-                            {tradie.review_count > 0 && (
-                              <span className="text-muted">
-                                ({tradie.review_count})
-                              </span>
+                            {tradie.average_rating > 0 ? (
+                              <>
+                                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                                <span className="font-semibold">
+                                  {tradie.average_rating?.toFixed(1)}
+                                </span>
+                                {tradie.review_count > 0 && (
+                                  <span className="text-muted">
+                                    ({tradie.review_count})
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-muted">New</span>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 mt-2 text-primary text-xs font-semibold">
-                          View profile & get a quote
-                          <ArrowRight className="w-3 h-3" />
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 mt-2.5">
+                          {tradie.phone && (
+                            <a
+                              href={`tel:${tradie.phone.replace(/\s/g, '')}`}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+                            >
+                              <Phone className="w-3 h-3" />
+                              Call
+                            </a>
+                          )}
+                          {tradie.website && (
+                            <a
+                              href={tradie.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1 py-1.5 px-3 border border-border rounded-lg text-xs font-medium text-foreground hover:border-primary hover:text-primary transition-colors"
+                            >
+                              <Globe className="w-3 h-3" />
+                              Website
+                            </a>
+                          )}
+                          {tradie.place_id && (
+                            <a
+                              href={`https://www.google.com/maps/place/?q=place_id:${tradie.place_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center py-1.5 px-2 border border-border rounded-lg text-xs text-muted hover:border-primary hover:text-primary transition-colors"
+                              title="View on Google Maps"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          {/* Fallback for tradies from our DB with slugs */}
+                          {!tradie.place_id && tradie.slug && (
+                            <a
+                              href={`/t/${tradie.slug}`}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent/90 transition-colors"
+                            >
+                              View Profile
+                            </a>
+                          )}
                         </div>
-                      </a>
+                      </div>
                     ))}
                   </div>
                 )}

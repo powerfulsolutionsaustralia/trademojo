@@ -36,7 +36,7 @@ export default function Navbar() {
               For Tradies
             </a>
             <a
-              href="/pricing"
+              href="/for-tradies#pricing"
               className="text-sm font-medium text-muted hover:text-foreground transition-colors"
             >
               Pricing
@@ -83,7 +83,7 @@ export default function Navbar() {
               For Tradies
             </a>
             <a
-              href="/pricing"
+              href="/for-tradies#pricing"
               className="block px-3 py-2 text-sm font-medium text-foreground hover:bg-border/50 rounded-lg"
             >
               Pricing

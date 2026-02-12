@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/directory/Navbar';
 import Footer from '@/components/directory/Footer';
+import TradeListings from '@/components/directory/TradeListings';
 import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
 import { generateTradeCategoryLd } from '@/lib/seo';
 import type { TradeCategory } from '@/types/database';
@@ -52,13 +53,6 @@ export default async function TradeLocationPage({ params }: Props) {
   const cityName = formatLocation(location);
   const jsonLd = generateTradeCategoryLd(category, cityName);
 
-  // TODO: Fetch real tradies from Supabase filtered by location
-  // const { data: tradies } = await supabase.from('tradies')
-  //   .select('*')
-  //   .eq('trade_category', trade)
-  //   .contains('service_areas', [cityName])
-  //   .eq('is_active', true);
-
   return (
     <>
       <script
@@ -68,126 +62,74 @@ export default async function TradeLocationPage({ params }: Props) {
       <Navbar />
 
       {/* Hero */}
-      <section className="py-16 md:py-20 px-4 bg-gradient-to-b from-primary/5 to-transparent">
+      <section className="py-12 md:py-16 px-4 bg-gradient-to-b from-primary/5 to-transparent">
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-4">
             <MapPin className="w-3.5 h-3.5" />
             {cityName}
           </div>
-          <h1 className="font-[family-name:var(--font-outfit)] text-4xl md:text-5xl font-bold text-foreground mb-4">
+          <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl font-bold text-foreground mb-3">
             {icon} {label}s in {cityName}
           </h1>
-          <p className="text-muted text-lg max-w-2xl mx-auto mb-6">
-            Find trusted, verified {label.toLowerCase()}s in {cityName} and
-            surrounding suburbs. Read reviews, compare quotes, and book online.
+          <p className="text-muted text-base max-w-xl mx-auto mb-5">
+            Find trusted {label.toLowerCase()}s in {cityName} and
+            surrounding suburbs. Read reviews, compare quotes, and call directly.
           </p>
 
           {/* Trust badges */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted">
             <div className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-accent" />
-              Licensed & Insured
+              <Shield className="w-3.5 h-3.5 text-accent" />
+              Google Verified
             </div>
             <div className="flex items-center gap-1.5">
-              <Star className="w-4 h-4 text-yellow-500" />
-              Verified Reviews
+              <Star className="w-3.5 h-3.5 text-yellow-500" />
+              Real Reviews
             </div>
             <div className="flex items-center gap-1.5">
-              <Phone className="w-4 h-4 text-primary" />
-              Free Quotes
+              <Phone className="w-3.5 h-3.5 text-primary" />
+              Direct Contact
             </div>
           </div>
         </div>
       </section>
 
-      {/* Placeholder — no tradies yet */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-surface border border-border rounded-2xl p-10 text-center">
-            <div className="text-4xl mb-4">🔍</div>
-            <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-3">
-              {label}s in {cityName} Coming Soon
-            </h2>
-            <p className="text-muted max-w-lg mx-auto mb-6">
-              We&apos;re signing up the best {label.toLowerCase()}s in{' '}
-              {cityName}. Leave your details and we&apos;ll match you with a
-              verified {label.toLowerCase()} as soon as one is available.
-            </p>
-
-            {/* Quick lead capture for pre-launch */}
-            <div className="max-w-md mx-auto mb-6">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  className="flex-1 px-4 py-3 bg-background border border-border rounded-xl text-sm outline-none focus:border-primary"
-                />
-                <Button variant="primary" size="md">
-                  Notify Me
-                </Button>
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-6">
-              <p className="text-sm text-muted mb-3">
-                Are you a {label.toLowerCase()} in {cityName}?
-              </p>
-              <a href="/onboard">
-                <Button variant="accent" size="md">
-                  List Your Business — It&apos;s Free
-                </Button>
-              </a>
-            </div>
-          </div>
+      {/* Real Listings from Google Places */}
+      <section className="py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <TradeListings trade={category} location={cityName} />
         </div>
       </section>
 
       {/* SEO Content Section */}
-      <section className="py-16 px-4 bg-surface">
+      <section className="py-12 px-4 bg-surface">
         <div className="max-w-3xl mx-auto">
-          <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-4">
+          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-4">
             About {label} Services in {cityName}
           </h2>
-          <div className="prose prose-slate max-w-none text-muted">
+          <div className="text-muted text-sm leading-relaxed space-y-3">
             <p>
               Looking for a reliable {label.toLowerCase()} in {cityName}?
-              TradeMojo connects you with licensed, insured, and reviewed{' '}
-              {label.toLowerCase()}s serving {cityName} and surrounding areas.
+              TradeMojo connects you with verified {label.toLowerCase()}s
+              serving {cityName} and surrounding areas. All listings are sourced
+              from Google and include real reviews from customers.
             </p>
-            <h3 className="text-foreground font-semibold text-lg mt-6 mb-2">
-              Why Use TradeMojo to Find a {label} in {cityName}?
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <strong>Verified professionals</strong> — Every{' '}
-                {label.toLowerCase()} on TradeMojo is checked for valid licenses
-                and insurance.
-              </li>
-              <li>
-                <strong>Real reviews</strong> — Read honest feedback from
-                homeowners in {cityName} who&apos;ve used these{' '}
-                {label.toLowerCase()}s.
-              </li>
-              <li>
-                <strong>Instant quotes</strong> — Request a free quote directly
-                through TradeMojo. No phone tag needed.
-              </li>
-              <li>
-                <strong>Book online</strong> — Schedule an appointment at a time
-                that works for you.
-              </li>
-            </ul>
+            <p>
+              You can call any {label.toLowerCase()} directly from this page,
+              visit their website for more info, or view their location on Google
+              Maps. Every business shown has a verified Google Business profile.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Browse other trades in this city */}
-      <section className="py-16 px-4">
+      <section className="py-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-8 text-center">
+          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-6 text-center">
             Other Trades in {cityName}
           </h2>
-          <div className="flex flex-wrap gap-3 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center">
             {TRADE_CATEGORIES.filter((t) => t !== category && t !== 'other')
               .slice(0, 10)
               .map((t) => (
@@ -201,6 +143,23 @@ export default async function TradeLocationPage({ params }: Props) {
                 </a>
               ))}
           </div>
+        </div>
+      </section>
+
+      {/* CTA for tradies */}
+      <section className="py-12 px-4 bg-primary">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-white mb-3">
+            Are you a {label.toLowerCase()} in {cityName}?
+          </h2>
+          <p className="text-white/80 text-sm mb-6">
+            Get your business listed on TradeMojo and start receiving leads from customers in your area.
+          </p>
+          <a href="/for-tradies">
+            <Button variant="accent" size="lg" className="text-white">
+              List Your Business — Free
+            </Button>
+          </a>
         </div>
       </section>
 
