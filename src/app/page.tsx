@@ -1,220 +1,148 @@
 import Navbar from '@/components/directory/Navbar';
-import TradeCategories from '@/components/directory/TradeCategories';
+import HeroSearch from '@/components/directory/HeroSearch';
 import Footer from '@/components/directory/Footer';
-import { MapPin, Phone, Star, Shield, ArrowRight, Sparkles, Users, Zap } from 'lucide-react';
+import { tradeCategoryLabel, tradeCategoryIcon, TRADE_CATEGORIES } from '@/lib/utils';
+import type { TradeCategory } from '@/types/database';
+import { MapPin, Star, Shield, Zap, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
+
+const TRADE_GROUPS: { label: string; trades: TradeCategory[] }[] = [
+  { label: 'Plumbing & Gas', trades: ['plumber'] },
+  { label: 'Electrical & Solar', trades: ['electrician', 'solar', 'air_conditioning'] },
+  { label: 'Building & Renovation', trades: ['builder', 'carpenter', 'tiler', 'concreter', 'glazier'] },
+  { label: 'Outdoor & Property', trades: ['landscaper', 'fencer', 'pool_builder', 'earthmoving'] },
+  { label: 'Roof & Exterior', trades: ['roofer', 'painter'] },
+  { label: 'Home Services', trades: ['handyman', 'locksmith', 'pest_control', 'cleaning'] },
+];
+
+const POPULAR_LOCATIONS = [
+  { city: 'Sydney', state: 'NSW' },
+  { city: 'Melbourne', state: 'VIC' },
+  { city: 'Brisbane', state: 'QLD' },
+  { city: 'Perth', state: 'WA' },
+  { city: 'Adelaide', state: 'SA' },
+  { city: 'Gold Coast', state: 'QLD' },
+  { city: 'Canberra', state: 'ACT' },
+  { city: 'Newcastle', state: 'NSW' },
+  { city: 'Sunshine Coast', state: 'QLD' },
+  { city: 'Wollongong', state: 'NSW' },
+  { city: 'Hobart', state: 'TAS' },
+  { city: 'Geelong', state: 'VIC' },
+  { city: 'Townsville', state: 'QLD' },
+  { city: 'Cairns', state: 'QLD' },
+  { city: 'Darwin', state: 'NT' },
+  { city: 'Toowoomba', state: 'QLD' },
+];
 
 export default function Home() {
   return (
     <>
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative py-16 md:py-24 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+      {/* Hero — Search above the fold */}
+      <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/2 to-transparent" />
 
-        <div className="relative z-10 max-w-4xl mx-auto text-center">
-          <h1 className="font-[family-name:var(--font-outfit)] text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 leading-tight">
-            Find a Tradie{' '}
-            <span className="text-primary">You Can Trust</span>
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 leading-tight">
+            Find a Tradie Near You
           </h1>
-
-          <p className="text-muted text-lg max-w-xl mx-auto mb-8">
-            Search real businesses with real reviews across Australia.
-            Call directly, check their website, or ask Mojo for help.
+          <p className="text-muted text-base mb-8 max-w-md mx-auto">
+            Enter your suburb, pick a trade, and see the highest-rated businesses with contact details.
           </p>
 
-          {/* Quick trust badges */}
-          <div className="flex flex-wrap items-center justify-center gap-5 text-sm text-muted mb-10">
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-500" />
-              <span>Real Google Reviews</span>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-accent" />
-              <span>Call Directly</span>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary" />
-              <span>100% Free</span>
-            </div>
-          </div>
+          <HeroSearch />
 
-          {/* Mojo CTA */}
-          <div className="inline-flex items-center gap-3 bg-mojo/10 border border-mojo/20 rounded-2xl px-6 py-3">
-            <div className="w-10 h-10 rounded-full bg-mojo flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
+          {/* Trust line */}
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-xs text-muted">
+            <div className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 text-yellow-500" />
+              Real Google Reviews
             </div>
-            <div className="text-left">
-              <div className="text-sm font-semibold text-foreground">Need help finding the right tradie?</div>
-              <div className="text-xs text-muted">Click <strong className="text-mojo">Ask Mojo</strong> in the bottom corner</div>
+            <span className="text-border">·</span>
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-accent" />
+              Verified Businesses
+            </div>
+            <span className="text-border">·</span>
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-primary" />
+              100% Free
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trade Categories */}
-      <div id="trades">
-        <TradeCategories />
-      </div>
-
-      {/* How It Works */}
-      <section className="py-16 px-4 bg-surface">
+      {/* Browse by Trade — Grouped */}
+      <section className="py-12 px-4 bg-surface" id="trades">
         <div className="max-w-5xl mx-auto">
-          <h2 className="font-[family-name:var(--font-outfit)] text-2xl md:text-3xl font-bold text-foreground mb-2 text-center">
-            How It Works
+          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-6">
+            Browse by Trade
           </h2>
-          <p className="text-muted text-center mb-10">
-            Find the right tradie in three simple steps
-          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                num: '1',
-                icon: <Sparkles className="w-6 h-6" />,
-                title: 'Tell Mojo What You Need',
-                desc: 'Tap Ask Mojo and tell us what trade you need, where you are, and what the job is.',
-                color: 'text-mojo bg-mojo/10',
-              },
-              {
-                num: '2',
-                icon: <Users className="w-6 h-6" />,
-                title: 'Get Real Results',
-                desc: 'See verified businesses from Google with ratings, reviews, phone numbers, and websites.',
-                color: 'text-primary bg-primary/10',
-              },
-              {
-                num: '3',
-                icon: <Phone className="w-6 h-6" />,
-                title: 'Call or Visit',
-                desc: 'Call the tradie directly from the results, visit their website, or check them on Google Maps.',
-                color: 'text-accent bg-accent/10',
-              },
-            ].map((step) => (
-              <div key={step.num} className="text-center">
-                <div className={`w-14 h-14 rounded-2xl ${step.color} flex items-center justify-center mx-auto mb-4`}>
-                  {step.icon}
-                </div>
-                <h3 className="font-semibold text-foreground text-lg mb-2">
-                  {step.title}
+          <div className="space-y-6">
+            {TRADE_GROUPS.map((group) => (
+              <div key={group.label}>
+                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                  {group.label}
                 </h3>
-                <p className="text-muted text-sm leading-relaxed">
-                  {step.desc}
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {group.trades.map((t) => (
+                    <a
+                      key={t}
+                      href={`/${t}`}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary hover:shadow-sm transition-all"
+                    >
+                      <span>{tradeCategoryIcon(t)}</span>
+                      <span>{tradeCategoryLabel(t)}</span>
+                    </a>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Popular Locations */}
-      <section className="py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-2 text-center">
+      {/* Browse by Location */}
+      <section className="py-12 px-4">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-6">
             Browse by Location
           </h2>
-          <p className="text-muted text-center mb-8">
-            Find tradies in major cities across Australia
-          </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {[
-              'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
-              'Gold Coast', 'Canberra', 'Newcastle', 'Sunshine Coast',
-              'Wollongong', 'Hobart', 'Geelong', 'Townsville', 'Cairns',
-              'Darwin', 'Toowoomba', 'Ballarat', 'Bendigo',
-            ].map((city) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {POPULAR_LOCATIONS.map(({ city, state }) => (
               <a
                 key={city}
                 href={`/plumber/${city.toLowerCase().replace(/\s+/g, '-')}`}
-                className="flex items-center gap-2 px-3 py-2.5 bg-surface border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary transition-all"
+                className="flex items-center justify-between px-4 py-3 bg-white border border-border rounded-xl hover:border-primary hover:shadow-sm transition-all group"
               >
-                <MapPin className="w-3 h-3 text-muted" />
-                {city}
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-muted group-hover:text-primary transition-colors" />
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{city}</span>
+                </div>
+                <span className="text-[10px] text-muted">{state}</span>
               </a>
             ))}
           </div>
         </div>
       </section>
 
-      {/* For Tradies CTA */}
-      <section className="py-16 px-4 bg-gradient-to-br from-secondary to-secondary/90">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-            <div>
-              <h2 className="font-[family-name:var(--font-outfit)] text-3xl font-bold text-white mb-4">
-                Are You a Tradie?
-              </h2>
-              <p className="text-white/70 text-base mb-6 leading-relaxed">
-                TradeMojo builds you a professional website in under 60 seconds.
-                Get a lead-gen page, booking system, review funnel, and client
-                dashboard — all included.
-              </p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Your own website with lead capture form',
-                  'Online booking for your customers',
-                  'Automated Google review requests',
-                  'Dashboard to manage leads & bookings',
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-2 text-white/80 text-sm">
-                    <Zap className="w-4 h-4 text-primary shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a href="/for-tradies">
-                  <Button variant="primary" size="lg">
-                    Learn More
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </a>
-                <a href="/onboard">
-                  <Button variant="ghost" size="lg" className="text-white border border-white/20 hover:bg-white/10">
-                    Get Started Free
-                  </Button>
-                </a>
-              </div>
-            </div>
-
-            {/* Visual representation */}
-            <div className="hidden md:block">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <div className="bg-white rounded-xl p-4 mb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Zap className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-foreground">Mike&apos;s Plumbing</div>
-                      <div className="text-xs text-muted">Brisbane, QLD</div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-surface rounded-lg py-2">
-                      <div className="text-lg font-bold text-primary">47</div>
-                      <div className="text-[10px] text-muted">Leads</div>
-                    </div>
-                    <div className="bg-surface rounded-lg py-2">
-                      <div className="text-lg font-bold text-accent">4.9</div>
-                      <div className="text-[10px] text-muted">Rating</div>
-                    </div>
-                    <div className="bg-surface rounded-lg py-2">
-                      <div className="text-lg font-bold text-mojo">23</div>
-                      <div className="text-[10px] text-muted">Bookings</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-xs text-white/50 text-center">
-                  Example tradie dashboard
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* For Tradies — Compact CTA */}
+      <section className="py-12 px-4 bg-secondary">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-white mb-3">
+            Are you a tradie?
+          </h2>
+          <p className="text-white/60 text-sm mb-6 max-w-lg mx-auto">
+            Get a professional website with lead capture, bookings, and automated Google reviews — set up in under 60 seconds.
+          </p>
+          <a href="/for-tradies">
+            <Button variant="primary" size="lg">
+              Learn More <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </a>
         </div>
       </section>
 

@@ -31,6 +31,23 @@ interface TradeListingsProps {
   showTitle?: boolean;
 }
 
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={`w-4 h-4 ${
+            n <= Math.round(rating)
+              ? 'fill-yellow-400 text-yellow-400'
+              : 'fill-gray-200 text-gray-200'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function TradeListings({ trade, location, state, limit, showTitle = true }: TradeListingsProps) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +80,12 @@ export default function TradeListings({ trade, location, state, limit, showTitle
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+          <Loader2 className="w-7 h-7 text-primary animate-spin mx-auto mb-3" />
           <p className="text-muted text-sm">
             Finding {tradeCategoryLabel(trade).toLowerCase()}s
-            {location ? ` in ${location}` : ''}...
+            {location && location !== 'Australia' ? ` in ${location}` : ''}...
           </p>
         </div>
       </div>
@@ -77,17 +94,16 @@ export default function TradeListings({ trade, location, state, limit, showTitle
 
   if (error || listings.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto bg-surface rounded-2xl border border-border p-8">
-          <div className="text-3xl mb-3">🔍</div>
-          <h3 className="font-semibold text-foreground mb-2">
-            {tradeCategoryLabel(trade)}s{location && location !== 'Australia' ? ` in ${location}` : ''}
+      <div className="text-center py-16">
+        <div className="max-w-md mx-auto">
+          <div className="text-4xl mb-3">🔍</div>
+          <h3 className="font-semibold text-foreground mb-2 text-lg">
+            No {tradeCategoryLabel(trade).toLowerCase()}s found
+            {location && location !== 'Australia' ? ` in ${location}` : ''}
           </h3>
-          <p className="text-muted text-sm mb-4">
-            We&apos;re setting up live listings for this area. In the meantime,
-            try asking Mojo on our{' '}
-            <a href="/" className="text-primary hover:underline">homepage</a>{' '}
-            or search a specific city below.
+          <p className="text-muted text-sm">
+            Try a nearby suburb or larger city, or{' '}
+            <a href="/" className="text-primary hover:underline">search again</a>.
           </p>
         </div>
       </div>
@@ -97,78 +113,111 @@ export default function TradeListings({ trade, location, state, limit, showTitle
   return (
     <div>
       {showTitle && (
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground">
-            {tradeCategoryLabel(trade)}s{location ? ` in ${location}` : ''}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-[family-name:var(--font-outfit)] text-lg font-bold text-foreground">
+            {listings.length} {tradeCategoryLabel(trade).toLowerCase()}s{location && location !== 'Australia' ? ` in ${location}` : ''} found
           </h2>
-          <span className="text-sm text-muted">{listings.length} found</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {listings.map((listing) => (
+      <div className="space-y-3">
+        {listings.map((listing, index) => (
           <div
             key={listing.place_id}
-            className="bg-surface rounded-2xl border border-border overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-200 group"
+            className="bg-white rounded-xl border border-border p-4 sm:p-5 hover:shadow-md hover:border-primary/20 transition-all group"
           >
-            {/* Photo placeholder / gradient */}
-            <div className="h-32 bg-gradient-to-br from-primary/10 via-primary/5 to-mojo/5 relative">
-              {listing.is_open !== undefined && (
-                <div className={`absolute top-3 left-3 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${listing.is_open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  <Clock className="w-3 h-3" />
-                  {listing.is_open ? 'Open Now' : 'Closed'}
-                </div>
-              )}
-              {listing.rating > 0 && (
-                <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full">
-                  <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-bold text-foreground">{listing.rating.toFixed(1)}</span>
-                  <span className="text-xs text-muted">({listing.review_count})</span>
-                </div>
-              )}
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start gap-3">
+                  {/* Rank */}
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                    {index + 1}
+                  </div>
 
-            {/* Content */}
-            <div className="p-4">
-              <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors line-clamp-1">
-                {listing.business_name}
-              </h3>
-              <p className="flex items-center gap-1 text-xs text-muted mt-1 line-clamp-1">
-                <MapPin className="w-3 h-3 shrink-0" />
-                {listing.formatted_address}
-              </p>
+                  <div className="min-w-0 flex-1">
+                    {/* Name */}
+                    <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors truncate">
+                      {listing.business_name}
+                    </h3>
+
+                    {/* Rating */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {listing.rating > 0 ? (
+                        <>
+                          <StarRating rating={listing.rating} />
+                          <span className="text-sm font-semibold text-foreground">{listing.rating.toFixed(1)}</span>
+                          <span className="text-xs text-muted">({listing.review_count} reviews)</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted">No reviews yet</span>
+                      )}
+                      {listing.is_open !== undefined && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                          listing.is_open
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-red-50 text-red-600'
+                        }`}>
+                          <Clock className="w-3 h-3" />
+                          {listing.is_open ? 'Open' : 'Closed'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Address */}
+                    <p className="flex items-start gap-1.5 text-sm text-muted mt-2">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span>{listing.formatted_address}</span>
+                    </p>
+
+                    {/* Phone displayed */}
+                    {listing.phone && (
+                      <a
+                        href={`tel:${listing.phone.replace(/\s/g, '')}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary-dark transition-colors mt-1.5"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        {listing.phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 mt-4">
+              <div className="flex sm:flex-col items-center gap-2 sm:items-end shrink-0 pl-11 sm:pl-0">
                 {listing.phone && (
                   <a
                     href={`tel:${listing.phone.replace(/\s/g, '')}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors"
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors"
                   >
-                    <Phone className="w-3.5 h-3.5" />
-                    Call
+                    <Phone className="w-4 h-4" />
+                    Call Now
                   </a>
                 )}
-                {listing.website && (
+                <div className="flex items-center gap-2">
+                  {listing.website && (
+                    <a
+                      href={listing.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 py-2 px-3 border border-border rounded-lg text-xs font-medium text-foreground hover:border-primary hover:text-primary transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Website
+                    </a>
+                  )}
                   <a
-                    href={listing.website}
+                    href={`https://www.google.com/maps/place/?q=place_id:${listing.place_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 py-2 px-3 border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 py-2 px-3 border border-border rounded-lg text-xs text-muted hover:border-primary hover:text-primary transition-colors"
+                    title="Google Maps"
                   >
-                    <Globe className="w-3.5 h-3.5" />
-                    Website
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Maps
                   </a>
-                )}
-                <a
-                  href={`https://www.google.com/maps/place/?q=place_id:${listing.place_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center py-2 px-3 border border-border rounded-xl text-sm text-muted hover:border-primary hover:text-primary transition-colors"
-                  title="View on Google Maps"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                </div>
               </div>
             </div>
           </div>
