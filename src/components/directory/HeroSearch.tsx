@@ -57,7 +57,7 @@ export default function HeroSearch() {
 
   return (
     <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl border border-border overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl border border-border">
         {/* Location input */}
         <div className="flex items-center border-b border-border">
           <div className="pl-4">

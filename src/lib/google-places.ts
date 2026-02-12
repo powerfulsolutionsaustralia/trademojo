@@ -75,7 +75,7 @@ export async function searchPlaces(
   const query = `${searchTerms[0]} in ${location}${state ? ` ${state}` : ''} Australia`;
 
   try {
-    // Text Search (New) - returns up to 20 results
+    // Text Search - returns up to 20 results
     const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}&region=au`;
     const res = await fetch(url);
     const data = await res.json();
@@ -90,6 +90,51 @@ export async function searchPlaces(
     console.error('Google Places API error:', error);
     return [];
   }
+}
+
+/**
+ * Search and enrich: search for places, then fetch details for each (phone, website, reviews)
+ * This gives us the full info needed for listings
+ */
+export async function searchPlacesWithDetails(
+  trade: TradeCategory,
+  location: string,
+  state: string = '',
+  limit: number = 20
+): Promise<GooglePlaceResult[]> {
+  const textResults = await searchPlaces(trade, location, state);
+
+  if (textResults.length === 0) return [];
+
+  // Fetch details for each place in parallel (limited to top results to manage API costs)
+  const topResults = textResults.slice(0, limit);
+
+  const enriched = await Promise.all(
+    topResults.map(async (place) => {
+      try {
+        const details = await getPlaceDetails(place.place_id);
+        if (details) {
+          return {
+            ...place,
+            ...details,
+            // Keep geometry from text search if details doesn't have it
+            geometry: details.geometry || place.geometry,
+          };
+        }
+        return place;
+      } catch {
+        return place;
+      }
+    })
+  );
+
+  // Sort: has phone/website first, then by rating
+  return enriched.sort((a, b) => {
+    const aHasContact = (a.formatted_phone_number || a.website) ? 1 : 0;
+    const bHasContact = (b.formatted_phone_number || b.website) ? 1 : 0;
+    if (bHasContact !== aHasContact) return bHasContact - aHasContact;
+    return (b.rating || 0) - (a.rating || 0);
+  });
 }
 
 /**
@@ -156,7 +201,7 @@ export function extractLocationFromAddress(address: string): {
 }
 
 /**
- * Convert a Google Place result to our tradie format for display
+ * Convert a Google Place result to our listing format for display
  */
 export function placeToDirectoryListing(
   place: GooglePlaceResult,
@@ -178,6 +223,12 @@ export function placeToDirectoryListing(
     website: place.website || '',
     is_open: place.opening_hours?.open_now,
     photo_reference: place.photos?.[0]?.photo_reference || null,
+    reviews: (place.reviews || []).slice(0, 3).map((r) => ({
+      author: r.author_name,
+      rating: r.rating,
+      text: r.text,
+      time: r.relative_time_description,
+    })),
     lat: place.geometry?.location?.lat,
     lng: place.geometry?.location?.lng,
   };

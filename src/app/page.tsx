@@ -41,7 +41,7 @@ export default function Home() {
 
       {/* Hero — Search above the fold */}
       <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/2 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/2 to-transparent pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 leading-tight">

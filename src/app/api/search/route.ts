@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { searchPlaces, placeToDirectoryListing } from '@/lib/google-places';
+import { searchPlacesWithDetails, placeToDirectoryListing } from '@/lib/google-places';
 import type { TradeCategory } from '@/types/database';
 
 export async function GET(request: Request) {
@@ -13,10 +13,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const places = await searchPlaces(
+    // Use enriched search that fetches details (phone, website, reviews) for each result
+    const places = await searchPlacesWithDetails(
       trade || 'handyman',
       location || 'Australia',
-      state
+      state,
+      20
     );
 
     const listings = places.map((p) => placeToDirectoryListing(p, trade || 'other'));
