@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FAFAF9;
+  --foreground: #1E293B;
+  --primary: #F97316;
+  --primary-dark: #EA580C;
+  --secondary: #1E293B;
+  --accent: #10B981;
+  --accent-dark: #059669;
+  --mojo: #8B5CF6;
+  --mojo-dark: #7C3AED;
+  --surface: #FFFFFF;
+  --border: #E2E8F0;
+  --muted: #94A3B8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-mojo: var(--mojo);
+  --color-mojo-dark: var(--mojo-dark);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-outfit);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Mojo AI Chat Animations */
+@keyframes mojo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes mojo-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.mojo-thinking {
+  animation: mojo-pulse 1.5s ease-in-out infinite;
+}
+
+.mojo-dot {
+  animation: mojo-bounce 0.6s ease-in-out infinite;
+}
+
+.mojo-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.mojo-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
