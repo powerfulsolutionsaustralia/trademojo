@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Star, Phone, Globe, ExternalLink, Loader2, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import type { TradeCategory } from '@/types/database';
-import { tradeCategoryLabel } from '@/lib/utils';
+import { tradeCategoryLabel, tradeCategoryPageTitle } from '@/lib/utils';
 
 interface Review {
   author: string;
@@ -271,7 +271,7 @@ export default function TradeListings({ trade, location, state, limit, showTitle
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
           <p className="text-muted text-sm font-medium">
-            Finding {tradeCategoryLabel(trade).toLowerCase()}s
+            Finding {tradeCategoryPageTitle(trade).toLowerCase()}
             {location && location !== 'Australia' ? ` in ${location}` : ''}...
           </p>
           <p className="text-muted/50 text-xs mt-1">Fetching reviews and contact details</p>
@@ -286,7 +286,7 @@ export default function TradeListings({ trade, location, state, limit, showTitle
         <div className="max-w-md mx-auto">
           <div className="text-4xl mb-3">🔍</div>
           <h3 className="font-semibold text-foreground mb-2 text-lg">
-            No {tradeCategoryLabel(trade).toLowerCase()}s found
+            No {tradeCategoryPageTitle(trade).toLowerCase()} found
             {location && location !== 'Australia' ? ` in ${location}` : ''}
           </h3>
           <p className="text-muted text-sm">
@@ -306,8 +306,7 @@ export default function TradeListings({ trade, location, state, limit, showTitle
       {showTitle && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-2">
           <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground">
-            {listings.length} {tradeCategoryLabel(trade).toLowerCase()}
-            {listings.length !== 1 ? 's' : ''}
+            {listings.length} {listings.length === 1 ? tradeCategoryLabel(trade).toLowerCase() : tradeCategoryPageTitle(trade).toLowerCase()}
             {location && location !== 'Australia' ? ` in ${location}` : ''} found
           </h2>
           <div className="flex items-center gap-3 text-xs text-muted">

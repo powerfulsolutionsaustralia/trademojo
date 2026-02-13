@@ -1,19 +1,9 @@
 import Navbar from '@/components/directory/Navbar';
 import HeroSearch from '@/components/directory/HeroSearch';
 import Footer from '@/components/directory/Footer';
-import { tradeCategoryLabel, tradeCategoryIcon, TRADE_CATEGORIES } from '@/lib/utils';
-import type { TradeCategory } from '@/types/database';
+import { tradeCategoryLabel, tradeCategoryIcon, TRADE_GROUPS } from '@/lib/utils';
 import { MapPin, Star, Shield, Zap, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
-
-const TRADE_GROUPS: { label: string; trades: TradeCategory[] }[] = [
-  { label: 'Plumbing & Gas', trades: ['plumber'] },
-  { label: 'Electrical & Solar', trades: ['electrician', 'solar', 'air_conditioning'] },
-  { label: 'Building & Renovation', trades: ['builder', 'carpenter', 'tiler', 'concreter', 'glazier'] },
-  { label: 'Outdoor & Property', trades: ['landscaper', 'fencer', 'pool_builder', 'earthmoving'] },
-  { label: 'Roof & Exterior', trades: ['roofer', 'painter'] },
-  { label: 'Home Services', trades: ['handyman', 'locksmith', 'pest_control', 'cleaning'] },
-];
 
 const POPULAR_LOCATIONS = [
   { city: 'Sydney', state: 'NSW' },

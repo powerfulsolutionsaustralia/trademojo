@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/directory/Navbar';
 import Footer from '@/components/directory/Footer';
 import TradeListings from '@/components/directory/TradeListings';
-import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
+import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryPlural, tradeCategoryPageTitle, tradeCategoryIcon } from '@/lib/utils';
 import { generateTradeCategoryLd } from '@/lib/seo';
 import type { TradeCategory } from '@/types/database';
 import { MapPin, ArrowRight, Shield, Star, Clock } from 'lucide-react';
@@ -17,13 +17,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { trade } = await params;
   if (!TRADE_CATEGORIES.includes(trade as TradeCategory)) return {};
 
+  const pageTitle = tradeCategoryPageTitle(trade as TradeCategory);
   const label = tradeCategoryLabel(trade as TradeCategory);
   return {
-    title: `Find ${label}s in Australia - TradeMojo`,
-    description: `Compare trusted ${label.toLowerCase()}s across Australia. Read reviews, get instant quotes, and book online with TradeMojo.`,
+    title: `Find ${pageTitle} in Australia - TradeMojo`,
+    description: `Compare trusted ${pageTitle.toLowerCase()} across Australia. Read reviews, get instant quotes, and book online with TradeMojo.`,
     openGraph: {
-      title: `Find ${label}s in Australia - TradeMojo`,
-      description: `Compare trusted ${label.toLowerCase()}s across Australia. Read reviews, get instant quotes, and book online.`,
+      title: `Find ${pageTitle} in Australia - TradeMojo`,
+      description: `Compare trusted ${pageTitle.toLowerCase()} across Australia. Read reviews, get instant quotes, and book online.`,
     },
     alternates: {
       canonical: `https://trademojo.com.au/${trade}`,
@@ -53,6 +54,8 @@ export default async function TradeCategoryPage({ params }: Props) {
 
   const category = trade as TradeCategory;
   const label = tradeCategoryLabel(category);
+  const plural = tradeCategoryPlural(category);
+  const pageTitle = tradeCategoryPageTitle(category);
   const icon = tradeCategoryIcon(category);
   const jsonLd = generateTradeCategoryLd(category);
 
@@ -69,10 +72,10 @@ export default async function TradeCategoryPage({ params }: Props) {
         <div className="max-w-5xl mx-auto text-center">
           <div className="text-5xl mb-4">{icon}</div>
           <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl font-bold text-foreground mb-3">
-            {label}s in Australia
+            {pageTitle} in Australia
           </h1>
           <p className="text-muted text-base max-w-xl mx-auto mb-6">
-            Browse {label.toLowerCase()}s near you. Compare reviews, call directly, or visit their website.
+            Browse {pageTitle.toLowerCase()} near you. Compare reviews, call directly, or visit their website.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted">
             <div className="flex items-center gap-1.5">
@@ -102,7 +105,7 @@ export default async function TradeCategoryPage({ params }: Props) {
       <section className="py-12 px-4 bg-surface">
         <div className="max-w-6xl mx-auto">
           <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-2 text-center">
-            {label}s by City
+            {pageTitle} by City
           </h2>
           <p className="text-muted text-sm text-center mb-6">
             Find a {label.toLowerCase()} near you
@@ -130,7 +133,7 @@ export default async function TradeCategoryPage({ params }: Props) {
           </h2>
           <div className="flex flex-wrap gap-2 justify-center">
             {TRADE_CATEGORIES.filter((t) => t !== category && t !== 'other')
-              .slice(0, 8)
+              .slice(0, 12)
               .map((t) => (
                 <a
                   key={t}

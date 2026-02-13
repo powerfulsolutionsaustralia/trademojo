@@ -4,27 +4,59 @@ const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 // Map our trade categories to Google Places search terms
 const TRADE_SEARCH_TERMS: Record<TradeCategory, string[]> = {
+  // Plumbing & Gas
   plumber: ['plumber', 'plumbing services'],
+  gas_fitter: ['gas fitter', 'gas plumber'],
+  drain_specialist: ['drain cleaning', 'blocked drain specialist'],
+  // Electrical & Solar
   electrician: ['electrician', 'electrical services'],
-  carpenter: ['carpenter', 'carpentry services'],
-  painter: ['painter', 'house painter', 'painting services'],
-  roofer: ['roofing', 'roof repairs'],
-  landscaper: ['landscaper', 'landscaping services'],
+  solar: ['solar installer', 'solar panels', 'solar system installer'],
+  air_conditioning: ['air conditioning', 'HVAC', 'aircon installer'],
+  data_cabling: ['data cabling', 'network cabling'],
+  security_systems: ['security system installer', 'CCTV installer', 'alarm installer'],
+  // Building & Renovation
   builder: ['builder', 'home builder', 'construction'],
+  carpenter: ['carpenter', 'carpentry services'],
   tiler: ['tiler', 'tiling services'],
   concreter: ['concreter', 'concrete services'],
-  fencer: ['fencing', 'fence builder'],
-  air_conditioning: ['air conditioning', 'HVAC', 'aircon'],
-  solar: ['solar installer', 'solar panels'],
-  pest_control: ['pest control'],
-  cleaning: ['cleaning services', 'house cleaning'],
-  locksmith: ['locksmith'],
-  glazier: ['glazier', 'glass repair'],
-  demolition: ['demolition services'],
-  earthmoving: ['earthmoving', 'excavation'],
-  pool_builder: ['pool builder', 'pool construction'],
+  glazier: ['glazier', 'glass repair', 'glass replacement'],
+  plasterer: ['plasterer', 'plastering services'],
+  bricklayer: ['bricklayer', 'brickwork', 'brick laying'],
+  cabinet_maker: ['cabinet maker', 'custom cabinetry'],
+  bathroom_renovator: ['bathroom renovation', 'bathroom remodel'],
+  kitchen_renovator: ['kitchen renovation', 'kitchen remodel'],
+  // Roofing & Exterior
+  roofer: ['roofing', 'roof repairs', 'roofer'],
+  painter: ['painter', 'house painter', 'painting services'],
+  renderer: ['renderer', 'rendering services', 'cement render'],
+  cladding: ['cladding installer', 'wall cladding'],
+  gutter_specialist: ['gutter cleaning', 'gutter installation', 'gutter repairs'],
+  // Outdoor & Property
+  landscaper: ['landscaper', 'landscaping services'],
+  fencer: ['fencing', 'fence builder', 'fencing contractor'],
+  pool_builder: ['pool builder', 'pool construction', 'swimming pool'],
+  earthmoving: ['earthmoving', 'excavation', 'excavator hire'],
+  demolition: ['demolition services', 'demolition contractor'],
+  paver: ['paving', 'paver installer', 'paving contractor'],
+  retaining_walls: ['retaining wall builder', 'retaining walls'],
+  tree_lopper: ['tree lopping', 'tree removal', 'arborist'],
+  irrigation: ['irrigation installer', 'reticulation', 'irrigation systems'],
+  // Home Services
   handyman: ['handyman', 'handyman services'],
-  other: ['tradesman'],
+  locksmith: ['locksmith', 'locksmith services'],
+  pest_control: ['pest control', 'termite inspection'],
+  cleaning: ['cleaning services', 'house cleaning', 'home cleaner'],
+  carpet_cleaning: ['carpet cleaning', 'carpet steam cleaning'],
+  // Appliances & Systems
+  appliance_repair: ['appliance repair', 'washing machine repair', 'oven repair'],
+  water_filtration: ['water filtration', 'water filter installation', 'water purification'],
+  hot_water_systems: ['hot water system', 'hot water installation', 'hot water repairs'],
+  garage_doors: ['garage door repair', 'garage door installation', 'roller door'],
+  antenna_specialist: ['TV antenna installer', 'antenna installation', 'antenna repair'],
+  // Flooring
+  flooring: ['flooring installer', 'timber flooring', 'floor sanding'],
+  // Other
+  other: ['tradesman', 'trade services'],
 };
 
 export interface GooglePlaceResult {
@@ -75,7 +107,6 @@ export async function searchPlaces(
   const query = `${searchTerms[0]} in ${location}${state ? ` ${state}` : ''} Australia`;
 
   try {
-    // Text Search - returns up to 20 results
     const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_API_KEY}&region=au`;
     const res = await fetch(url);
     const data = await res.json();
@@ -94,7 +125,6 @@ export async function searchPlaces(
 
 /**
  * Search and enrich: search for places, then fetch details for each (phone, website, reviews)
- * This gives us the full info needed for listings
  */
 export async function searchPlacesWithDetails(
   trade: TradeCategory,
@@ -106,7 +136,6 @@ export async function searchPlacesWithDetails(
 
   if (textResults.length === 0) return [];
 
-  // Fetch details for each place in parallel (limited to top results to manage API costs)
   const topResults = textResults.slice(0, limit);
 
   const enriched = await Promise.all(
@@ -117,7 +146,6 @@ export async function searchPlacesWithDetails(
           return {
             ...place,
             ...details,
-            // Keep geometry from text search if details doesn't have it
             geometry: details.geometry || place.geometry,
           };
         }
@@ -128,7 +156,6 @@ export async function searchPlacesWithDetails(
     })
   );
 
-  // Sort: has phone/website first, then by rating
   return enriched.sort((a, b) => {
     const aHasContact = (a.formatted_phone_number || a.website) ? 1 : 0;
     const bHasContact = (b.formatted_phone_number || b.website) ? 1 : 0;
@@ -176,14 +203,12 @@ export function extractLocationFromAddress(address: string): {
   state: string;
   postcode: string;
 } {
-  // Typical format: "123 Street, Suburb STATE POSTCODE, Australia"
   const parts = address.split(',').map((p) => p.trim());
 
   let suburb = '';
   let state = '';
   let postcode = '';
 
-  // Usually the second-to-last part has suburb + state + postcode
   const statePostcodePart = parts.length >= 2 ? parts[parts.length - 2] : '';
   const stateMatch = statePostcodePart.match(
     /(.+?)\s+(QLD|NSW|VIC|SA|WA|TAS|NT|ACT)\s+(\d{4})/i

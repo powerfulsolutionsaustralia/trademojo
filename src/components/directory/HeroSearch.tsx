@@ -1,58 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, MapPin, ChevronDown } from 'lucide-react';
-import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
+import { Search, MapPin, X } from 'lucide-react';
+import { TRADE_GROUPS, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
 import type { TradeCategory } from '@/types/database';
 
-const TRADE_GROUPS: { label: string; trades: TradeCategory[] }[] = [
-  {
-    label: 'Plumbing & Gas',
-    trades: ['plumber'],
-  },
-  {
-    label: 'Electrical & Solar',
-    trades: ['electrician', 'solar', 'air_conditioning'],
-  },
-  {
-    label: 'Building & Renovation',
-    trades: ['builder', 'carpenter', 'tiler', 'concreter', 'glazier'],
-  },
-  {
-    label: 'Outdoor & Property',
-    trades: ['landscaper', 'fencer', 'pool_builder', 'earthmoving', 'demolition'],
-  },
-  {
-    label: 'Roof & Exterior',
-    trades: ['roofer', 'painter'],
-  },
-  {
-    label: 'Home Services',
-    trades: ['handyman', 'locksmith', 'pest_control', 'cleaning'],
-  },
-];
+// Flatten all trades from groups for searching
+const ALL_TRADES = TRADE_GROUPS.flatMap(g =>
+  g.trades.map(t => ({
+    value: t,
+    label: tradeCategoryLabel(t),
+    icon: tradeCategoryIcon(t),
+    group: g.label,
+  }))
+);
 
 export default function HeroSearch() {
   const router = useRouter();
   const [location, setLocation] = useState('');
-  const [trade, setTrade] = useState('');
+  const [tradeValue, setTradeValue] = useState('');
+  const [tradeSearch, setTradeSearch] = useState('');
   const [tradeOpen, setTradeOpen] = useState(false);
+  const tradeInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        tradeInputRef.current &&
+        !tradeInputRef.current.contains(e.target as Node)
+      ) {
+        setTradeOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Filter trades based on search
+  const filtered = tradeSearch.trim()
+    ? ALL_TRADES.filter(t =>
+        t.label.toLowerCase().includes(tradeSearch.toLowerCase()) ||
+        t.value.replace(/_/g, ' ').includes(tradeSearch.toLowerCase()) ||
+        t.group.toLowerCase().includes(tradeSearch.toLowerCase())
+      )
+    : ALL_TRADES;
+
+  // Group filtered results
+  const groupedFiltered = TRADE_GROUPS.map(g => ({
+    ...g,
+    trades: g.trades.filter(t => filtered.some(f => f.value === t)),
+  })).filter(g => g.trades.length > 0);
+
+  const handleSelectTrade = (t: TradeCategory) => {
+    setTradeValue(t);
+    setTradeSearch('');
+    setTradeOpen(false);
+  };
+
+  const handleClearTrade = () => {
+    setTradeValue('');
+    setTradeSearch('');
+    tradeInputRef.current?.focus();
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trade) return;
+    if (!tradeValue) return;
 
     const loc = location.trim().toLowerCase().replace(/\s+/g, '-') || 'australia';
     if (loc === 'australia') {
-      router.push(`/${trade}`);
+      router.push(`/${tradeValue}`);
     } else {
-      router.push(`/${trade}/${loc}`);
+      router.push(`/${tradeValue}/${loc}`);
     }
   };
 
-  const selectedLabel = trade
-    ? `${tradeCategoryIcon(trade as TradeCategory)} ${tradeCategoryLabel(trade as TradeCategory)}`
+  const selectedLabel = tradeValue
+    ? `${tradeCategoryIcon(tradeValue as TradeCategory)} ${tradeCategoryLabel(tradeValue as TradeCategory)}`
     : '';
 
   return (
@@ -73,50 +102,72 @@ export default function HeroSearch() {
           />
         </div>
 
-        {/* Trade selector */}
+        {/* Trade search input */}
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setTradeOpen(!tradeOpen)}
-            className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <div className="pl-4">
               <Search className="w-5 h-5 text-mojo" />
-              {trade ? (
-                <span className="text-base text-foreground font-medium">{selectedLabel}</span>
-              ) : (
-                <span className="text-base text-muted/50">What do you need?</span>
-              )}
             </div>
-            <ChevronDown className={`w-4 h-4 text-muted transition-transform ${tradeOpen ? 'rotate-180' : ''}`} />
-          </button>
+            {tradeValue ? (
+              // Selected state — show the selected trade with clear button
+              <div className="flex-1 flex items-center justify-between px-3 py-4">
+                <span className="text-base text-foreground font-medium">{selectedLabel}</span>
+                <button
+                  type="button"
+                  onClick={handleClearTrade}
+                  className="p-1 rounded-full hover:bg-gray-100 text-muted hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              // Search state — typeable input
+              <input
+                ref={tradeInputRef}
+                type="text"
+                value={tradeSearch}
+                onChange={(e) => {
+                  setTradeSearch(e.target.value);
+                  setTradeOpen(true);
+                }}
+                onFocus={() => setTradeOpen(true)}
+                placeholder="What do you need? e.g. plumber, solar, kitchen..."
+                className="flex-1 px-3 py-4 text-base outline-none bg-transparent placeholder:text-muted/50"
+                autoComplete="off"
+              />
+            )}
+          </div>
 
-          {/* Dropdown */}
-          {tradeOpen && (
-            <div className="absolute left-0 right-0 top-full z-30 bg-white border border-border rounded-b-2xl shadow-2xl max-h-80 overflow-y-auto">
-              {TRADE_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <div className="px-4 py-2 bg-gray-50 text-[11px] font-semibold text-muted uppercase tracking-wider">
-                    {group.label}
-                  </div>
-                  {group.trades.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setTrade(t);
-                        setTradeOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-primary/5 transition-colors ${
-                        trade === t ? 'bg-primary/10 text-primary' : 'text-foreground'
-                      }`}
-                    >
-                      <span className="text-lg">{tradeCategoryIcon(t)}</span>
-                      <span className="text-sm font-medium">{tradeCategoryLabel(t)}</span>
-                    </button>
-                  ))}
+          {/* Dropdown — searchable results */}
+          {tradeOpen && !tradeValue && (
+            <div
+              ref={dropdownRef}
+              className="absolute left-0 right-0 top-full z-30 bg-white border border-border rounded-b-2xl shadow-2xl max-h-72 overflow-y-auto"
+            >
+              {groupedFiltered.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-muted">
+                  No trades matching &ldquo;{tradeSearch}&rdquo;
                 </div>
-              ))}
+              ) : (
+                groupedFiltered.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-4 py-1.5 bg-gray-50 text-[11px] font-semibold text-muted uppercase tracking-wider sticky top-0">
+                      {group.label}
+                    </div>
+                    {group.trades.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => handleSelectTrade(t)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-primary/5 transition-colors text-foreground"
+                      >
+                        <span className="text-lg w-6 text-center">{tradeCategoryIcon(t)}</span>
+                        <span className="text-sm font-medium">{tradeCategoryLabel(t)}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -125,7 +176,7 @@ export default function HeroSearch() {
         <div className="p-3 bg-gray-50/50">
           <button
             type="submit"
-            disabled={!trade}
+            disabled={!tradeValue}
             className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-base hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Search className="w-5 h-5" />

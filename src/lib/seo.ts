@@ -1,5 +1,5 @@
 import type { Tradie, TradeCategory } from '@/types/database';
-import { tradeCategoryLabel } from '@/lib/utils';
+import { tradeCategoryLabel, tradeCategoryPageTitle } from '@/lib/utils';
 
 /**
  * Generate JSON-LD structured data for a tradie's LocalBusiness listing.
@@ -84,16 +84,16 @@ export function generateTradeCategoryLd(
   category: TradeCategory,
   location?: string
 ) {
-  const label = tradeCategoryLabel(category);
+  const pageTitle = tradeCategoryPageTitle(category);
   return {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: location
-      ? `${label}s in ${location} - TradeMojo`
-      : `${label}s in Australia - TradeMojo`,
+      ? `${pageTitle} in ${location} - TradeMojo`
+      : `${pageTitle} in Australia - TradeMojo`,
     description: location
-      ? `Find trusted ${label.toLowerCase()}s in ${location}. Compare reviews, get quotes, and book online.`
-      : `Find trusted ${label.toLowerCase()}s across Australia. Compare reviews, get quotes, and book online.`,
+      ? `Find trusted ${pageTitle.toLowerCase()} in ${location}. Compare reviews, get quotes, and book online.`
+      : `Find trusted ${pageTitle.toLowerCase()} across Australia. Compare reviews, get quotes, and book online.`,
     url: location
       ? `https://trademojo.com.au/${category}/${location.toLowerCase().replace(/\s+/g, '-')}`
       : `https://trademojo.com.au/${category}`,

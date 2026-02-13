@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/directory/Navbar';
 import Footer from '@/components/directory/Footer';
 import TradeListings from '@/components/directory/TradeListings';
-import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
+import { TRADE_CATEGORIES, tradeCategoryLabel, tradeCategoryPageTitle, tradeCategoryIcon } from '@/lib/utils';
 import { generateTradeCategoryLd } from '@/lib/seo';
 import type { TradeCategory } from '@/types/database';
 import { MapPin, Phone, Star, ArrowRight, Shield } from 'lucide-react';
@@ -24,15 +24,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { trade, location } = await params;
   if (!TRADE_CATEGORIES.includes(trade as TradeCategory)) return {};
 
+  const pageTitle = tradeCategoryPageTitle(trade as TradeCategory);
   const label = tradeCategoryLabel(trade as TradeCategory);
   const cityName = formatLocation(location);
 
   return {
-    title: `${label}s in ${cityName} - Find Local ${label}s | TradeMojo`,
-    description: `Looking for a ${label.toLowerCase()} in ${cityName}? Compare trusted, reviewed ${label.toLowerCase()}s near you. Get free quotes and book online with TradeMojo.`,
+    title: `${pageTitle} in ${cityName} - Find Local ${pageTitle} | TradeMojo`,
+    description: `Looking for a ${label.toLowerCase()} in ${cityName}? Compare trusted, reviewed ${pageTitle.toLowerCase()} near you. Get free quotes and book online with TradeMojo.`,
     openGraph: {
-      title: `${label}s in ${cityName} | TradeMojo`,
-      description: `Find trusted ${label.toLowerCase()}s in ${cityName}. Compare reviews, get quotes, book online.`,
+      title: `${pageTitle} in ${cityName} | TradeMojo`,
+      description: `Find trusted ${pageTitle.toLowerCase()} in ${cityName}. Compare reviews, get quotes, book online.`,
     },
     alternates: {
       canonical: `https://trademojo.com.au/${trade}/${location}`,
@@ -49,6 +50,7 @@ export default async function TradeLocationPage({ params }: Props) {
 
   const category = trade as TradeCategory;
   const label = tradeCategoryLabel(category);
+  const pageTitle = tradeCategoryPageTitle(category);
   const icon = tradeCategoryIcon(category);
   const cityName = formatLocation(location);
   const jsonLd = generateTradeCategoryLd(category, cityName);
@@ -69,10 +71,10 @@ export default async function TradeLocationPage({ params }: Props) {
             {cityName}
           </div>
           <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl font-bold text-foreground mb-3">
-            {icon} {label}s in {cityName}
+            {icon} {pageTitle} in {cityName}
           </h1>
           <p className="text-muted text-base max-w-xl mx-auto mb-5">
-            Find trusted {label.toLowerCase()}s in {cityName} and
+            Find trusted {pageTitle.toLowerCase()} in {cityName} and
             surrounding suburbs. Read reviews, compare quotes, and call directly.
           </p>
 
@@ -110,8 +112,8 @@ export default async function TradeLocationPage({ params }: Props) {
           <div className="text-muted text-sm leading-relaxed space-y-3">
             <p>
               Looking for a reliable {label.toLowerCase()} in {cityName}?
-              TradeMojo connects you with verified {label.toLowerCase()}s
-              serving {cityName} and surrounding areas. All listings are sourced
+              TradeMojo connects you with verified {pageTitle.toLowerCase()}
+              {' '}serving {cityName} and surrounding areas. All listings are sourced
               from Google and include real reviews from customers.
             </p>
             <p>
@@ -131,7 +133,7 @@ export default async function TradeLocationPage({ params }: Props) {
           </h2>
           <div className="flex flex-wrap gap-2 justify-center">
             {TRADE_CATEGORIES.filter((t) => t !== category && t !== 'other')
-              .slice(0, 10)
+              .slice(0, 12)
               .map((t) => (
                 <a
                   key={t}

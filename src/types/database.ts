@@ -1,26 +1,58 @@
 // TradeMojo Database Types
 
 export type TradeCategory =
+  // Plumbing & Gas
   | 'plumber'
+  | 'gas_fitter'
+  | 'drain_specialist'
+  // Electrical & Solar
   | 'electrician'
-  | 'carpenter'
-  | 'painter'
-  | 'roofer'
-  | 'landscaper'
+  | 'solar'
+  | 'air_conditioning'
+  | 'data_cabling'
+  | 'security_systems'
+  // Building & Renovation
   | 'builder'
+  | 'carpenter'
   | 'tiler'
   | 'concreter'
+  | 'glazier'
+  | 'plasterer'
+  | 'bricklayer'
+  | 'cabinet_maker'
+  | 'bathroom_renovator'
+  | 'kitchen_renovator'
+  // Roofing & Exterior
+  | 'roofer'
+  | 'painter'
+  | 'renderer'
+  | 'cladding'
+  | 'gutter_specialist'
+  // Outdoor & Property
+  | 'landscaper'
   | 'fencer'
-  | 'air_conditioning'
-  | 'solar'
+  | 'pool_builder'
+  | 'earthmoving'
+  | 'demolition'
+  | 'paver'
+  | 'retaining_walls'
+  | 'tree_lopper'
+  | 'irrigation'
+  // Home Services
+  | 'handyman'
+  | 'locksmith'
   | 'pest_control'
   | 'cleaning'
-  | 'locksmith'
-  | 'glazier'
-  | 'demolition'
-  | 'earthmoving'
-  | 'pool_builder'
-  | 'handyman'
+  | 'carpet_cleaning'
+  // Appliances & Systems
+  | 'appliance_repair'
+  | 'water_filtration'
+  | 'hot_water_systems'
+  | 'garage_doors'
+  | 'antenna_specialist'
+  // Flooring
+  | 'flooring'
+  // Other
   | 'other';
 
 export type PlanTier = 'free' | 'pro' | 'premium' | 'payg';

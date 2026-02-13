@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X, Send, Sparkles, MapPin, Phone, Star, Globe,
-  ExternalLink, ChevronDown, Wrench,
+  ExternalLink, Wrench,
 } from 'lucide-react';
+import { TRADE_GROUPS, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
+import type { TradeCategory } from '@/types/database';
 
 // ─── Types ──────────────────────────────────────────────────
 interface MojoMessage {
@@ -29,21 +31,156 @@ interface MojoTradieResult {
   place_id?: string;
 }
 
-// ─── Trade options for quick select ─────────────────────────
-const POPULAR_TRADES = [
+// ─── All trades flat list for matching ─────────────────────────
+const ALL_TRADES = TRADE_GROUPS.flatMap(g =>
+  g.trades.map(t => ({
+    value: t,
+    label: tradeCategoryLabel(t),
+    keywords: [
+      t.replace(/_/g, ' '),
+      tradeCategoryLabel(t).toLowerCase(),
+      // Extra keywords for fuzzy matching
+      ...(t === 'solar' ? ['solar', 'solar panel', 'solar system', 'solar guy'] : []),
+      ...(t === 'plumber' ? ['plumbing', 'pipes', 'tap', 'taps', 'toilet', 'leaking'] : []),
+      ...(t === 'electrician' ? ['electrical', 'power', 'wiring', 'lights', 'light'] : []),
+      ...(t === 'air_conditioning' ? ['aircon', 'ac', 'air con', 'hvac', 'cooling', 'heating'] : []),
+      ...(t === 'roofer' ? ['roof', 'roofing', 'roof leak', 'gutters'] : []),
+      ...(t === 'painter' ? ['painting', 'paint'] : []),
+      ...(t === 'landscaper' ? ['landscaping', 'garden', 'yard'] : []),
+      ...(t === 'builder' ? ['building', 'construction', 'renovate', 'renovation', 'reno'] : []),
+      ...(t === 'cleaning' ? ['cleaner', 'cleaning', 'house clean', 'end of lease'] : []),
+      ...(t === 'pest_control' ? ['pest', 'termite', 'termites', 'cockroach', 'ants', 'spider'] : []),
+      ...(t === 'handyman' ? ['handy man', 'odd jobs', 'fix', 'repair'] : []),
+      ...(t === 'locksmith' ? ['lock', 'keys', 'locked out'] : []),
+      ...(t === 'pool_builder' ? ['pool', 'swimming pool'] : []),
+      ...(t === 'tiler' ? ['tiles', 'tiling', 'tile'] : []),
+      ...(t === 'carpenter' ? ['carpentry', 'wood', 'timber'] : []),
+      ...(t === 'concreter' ? ['concrete', 'slab', 'driveway'] : []),
+      ...(t === 'fencer' ? ['fence', 'fencing'] : []),
+      ...(t === 'glazier' ? ['glass', 'window', 'windows'] : []),
+      ...(t === 'demolition' ? ['demo', 'demolish', 'knock down'] : []),
+      ...(t === 'earthmoving' ? ['excavation', 'excavator', 'dig'] : []),
+      ...(t === 'hot_water_systems' ? ['hot water', 'water heater'] : []),
+      ...(t === 'water_filtration' ? ['water filter', 'filtered water', 'water purifier'] : []),
+      ...(t === 'appliance_repair' ? ['appliance', 'washing machine', 'dishwasher', 'fridge', 'oven', 'dryer'] : []),
+      ...(t === 'garage_doors' ? ['garage door', 'roller door'] : []),
+      ...(t === 'flooring' ? ['floor', 'floors', 'timber floor', 'floorboards'] : []),
+      ...(t === 'carpet_cleaning' ? ['carpet', 'carpet clean', 'steam clean'] : []),
+      ...(t === 'bathroom_renovator' ? ['bathroom', 'bathroom reno'] : []),
+      ...(t === 'kitchen_renovator' ? ['kitchen', 'kitchen reno'] : []),
+      ...(t === 'tree_lopper' ? ['tree', 'tree removal', 'arborist', 'tree cutting'] : []),
+      ...(t === 'antenna_specialist' ? ['antenna', 'tv antenna', 'tv reception'] : []),
+      ...(t === 'gutter_specialist' ? ['gutter', 'gutters', 'gutter clean'] : []),
+      ...(t === 'security_systems' ? ['security', 'cctv', 'alarm', 'camera'] : []),
+      ...(t === 'data_cabling' ? ['data cable', 'network', 'ethernet'] : []),
+      ...(t === 'plasterer' ? ['plaster', 'plastering', 'gyprocking'] : []),
+      ...(t === 'bricklayer' ? ['brick', 'bricks', 'brickwork'] : []),
+      ...(t === 'cabinet_maker' ? ['cabinet', 'cabinets', 'cabinetry', 'joinery'] : []),
+      ...(t === 'renderer' ? ['render', 'rendering'] : []),
+      ...(t === 'cladding' ? ['cladding', 'wall cladding'] : []),
+      ...(t === 'paver' ? ['paving', 'pavers', 'pave'] : []),
+      ...(t === 'retaining_walls' ? ['retaining wall', 'retaining'] : []),
+      ...(t === 'irrigation' ? ['irrigation', 'reticulation', 'sprinkler'] : []),
+      ...(t === 'gas_fitter' ? ['gas', 'gas fitting', 'gas line', 'gas heater'] : []),
+      ...(t === 'drain_specialist' ? ['drain', 'blocked drain', 'drainage', 'sewer'] : []),
+    ],
+  }))
+);
+
+// Common Australian locations for matching
+const KNOWN_LOCATIONS = [
+  'sydney', 'melbourne', 'brisbane', 'perth', 'adelaide', 'gold coast',
+  'sunshine coast', 'canberra', 'newcastle', 'wollongong', 'hobart',
+  'geelong', 'townsville', 'cairns', 'darwin', 'toowoomba', 'ballarat',
+  'bendigo', 'albury', 'launceston', 'mackay', 'rockhampton', 'bunbury',
+  'bundaberg', 'hervey bay', 'wagga wagga', 'mildura', 'gladstone',
+  'shepparton', 'tamworth', 'port macquarie', 'orange', 'dubbo',
+  'north lakes', 'caboolture', 'redcliffe', 'ipswich', 'logan',
+  'springfield', 'browns plains', 'beenleigh', 'robina', 'southport',
+  'burleigh', 'coolangatta', 'tweed heads', 'byron bay', 'lismore',
+  'caloundra', 'maroochydore', 'noosa', 'nambour', 'mooloolaba',
+];
+
+/**
+ * Parse a freeform message to extract trade, location, and problem
+ */
+function parseMessage(text: string): {
+  trade: TradeCategory | null;
+  location: string | null;
+  problem: string | null;
+} {
+  const lower = text.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // 1. Try to match a trade
+  let matchedTrade: TradeCategory | null = null;
+  let bestTradeScore = 0;
+  for (const t of ALL_TRADES) {
+    for (const kw of t.keywords) {
+      if (lower.includes(kw) && kw.length > bestTradeScore) {
+        matchedTrade = t.value;
+        bestTradeScore = kw.length;
+      }
+    }
+  }
+
+  // 2. Try to match a location — look for known cities, postcodes, "in/on/near [place]"
+  let matchedLocation: string | null = null;
+
+  // Check for postcodes (4 digit numbers)
+  const postcodeMatch = text.match(/\b(\d{4})\b/);
+  if (postcodeMatch) {
+    matchedLocation = postcodeMatch[1];
+  }
+
+  // Check for "in/on/at/near [location]" pattern
+  if (!matchedLocation) {
+    const locationPattern = lower.match(/(?:in|on|at|near|around)\s+(?:the\s+)?([a-z\s]+?)(?:\s+(?:area|region|i|and|but|they|we|he|she|it|that|who|which)|$)/);
+    if (locationPattern) {
+      const candidate = locationPattern[1].trim();
+      // Check if it's a known location
+      const knownMatch = KNOWN_LOCATIONS.find(loc => candidate.includes(loc) || loc.includes(candidate));
+      if (knownMatch) {
+        matchedLocation = knownMatch.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      } else if (candidate.length >= 3 && candidate.length <= 30) {
+        // Accept it as a potential suburb name
+        matchedLocation = candidate.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+    }
+  }
+
+  // Direct check for known locations anywhere in text
+  if (!matchedLocation) {
+    for (const loc of KNOWN_LOCATIONS) {
+      if (lower.includes(loc)) {
+        matchedLocation = loc.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        break;
+      }
+    }
+  }
+
+  // 3. The problem is the remaining text (simplified — the whole message is the context)
+  const problem = text.trim();
+
+  return { trade: matchedTrade, location: matchedLocation, problem };
+}
+
+// ─── Quick reply options ─────────────────────────
+const POPULAR_TRADE_CHIPS = [
   { label: 'Plumber', value: 'plumber', emoji: '🔧' },
   { label: 'Electrician', value: 'electrician', emoji: '⚡' },
   { label: 'Builder', value: 'builder', emoji: '🏗️' },
-  { label: 'Roofer', value: 'roofer', emoji: '🏠' },
-  { label: 'Air Con', value: 'air_conditioning', emoji: '❄️' },
   { label: 'Solar', value: 'solar', emoji: '☀️' },
+  { label: 'Air Con', value: 'air_conditioning', emoji: '❄️' },
   { label: 'Painter', value: 'painter', emoji: '🎨' },
+  { label: 'Roofer', value: 'roofer', emoji: '🏠' },
   { label: 'Landscaper', value: 'landscaper', emoji: '🌿' },
-  { label: 'Tiler', value: 'tiler', emoji: '🔲' },
-  { label: 'Carpenter', value: 'carpenter', emoji: '🪚' },
-  { label: 'Fencer', value: 'fencer', emoji: '🏡' },
+  { label: 'Handyman', value: 'handyman', emoji: '🔨' },
+  { label: 'Cleaner', value: 'cleaning', emoji: '🧹' },
   { label: 'Pest Control', value: 'pest_control', emoji: '🐛' },
+  { label: 'Locksmith', value: 'locksmith', emoji: '🔑' },
 ];
+
+const CITY_CHIPS = ['Brisbane', 'Sydney', 'Melbourne', 'Gold Coast', 'Perth', 'Adelaide'];
 
 // ─── Component ──────────────────────────────────────────────
 export default function MojoWidget() {
@@ -70,7 +207,6 @@ export default function MojoWidget() {
     }
   }, [isOpen]);
 
-  // Start the conversation when opened for the first time
   const handleOpen = () => {
     setIsOpen(true);
     if (messages.length === 0) {
@@ -82,8 +218,8 @@ export default function MojoWidget() {
     setMessages([
       {
         role: 'mojo',
-        content: "G'day! I'm Mojo. I'll help you find the right tradie.\n\nWhat kind of tradie do you need?",
-        quickReplies: POPULAR_TRADES.map(t => `${t.emoji} ${t.label}`),
+        content: "G'day! I'm Mojo — tell me what you need and where you are, and I'll find the right tradie.\n\nFor example: \"plumber in Brisbane\" or \"I need my solar panels checked on the Gold Coast\"",
+        quickReplies: POPULAR_TRADE_CHIPS.map(t => `${t.emoji} ${t.label}`),
       },
     ]);
     setStep('trade');
@@ -98,6 +234,55 @@ export default function MojoWidget() {
     startConversation();
   };
 
+  // ─── Execute search ────────────────────────────────────────
+  const doSearch = useCallback(async (trade: string, location: string, problem: string) => {
+    setStep('searching');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/mojo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `I need a ${trade.replace(/_/g, ' ')} in ${location}. ${problem}`,
+          trade,
+          location,
+          problem,
+          history: [],
+        }),
+      });
+
+      const data = await res.json();
+      const tradeLabel = tradeCategoryLabel(trade as TradeCategory);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'mojo',
+          content: data.tradies?.length > 0
+            ? `Found ${data.tradies.length} ${tradeLabel.toLowerCase()}${data.tradies.length !== 1 ? 's' : ''} near ${location}:`
+            : data.message || `No results found for ${tradeLabel.toLowerCase()} in ${location}. Try a different area?`,
+          tradies: data.tradies || [],
+          quickReplies: data.tradies?.length > 0
+            ? ['New search', 'Different area', 'Different trade']
+            : ['Try a different area', 'Try a different trade'],
+        },
+      ]);
+      setStep('results');
+    } catch {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'mojo',
+          content: "Sorry, hit a snag. Give it another go!",
+          quickReplies: ['Try again', 'New search'],
+        },
+      ]);
+      setStep('results');
+    }
+    setIsLoading(false);
+  }, []);
+
   // ─── Send message ───────────────────────────────────────────
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
@@ -107,95 +292,10 @@ export default function MojoWidget() {
     setInput('');
     setIsLoading(true);
 
-    // Step-based conversation
-    if (step === 'trade') {
-      // User selected/typed a trade
-      const tradeLower = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
-      const matched = POPULAR_TRADES.find(t =>
-        tradeLower.includes(t.label.toLowerCase()) || tradeLower.includes(t.value.replace('_', ' '))
-      );
-      const tradeValue = matched?.value || tradeLower.replace(/\s+/g, '_');
-      const tradeLabel = matched?.label || text.trim();
-      setSelectedTrade(tradeValue);
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'mojo',
-          content: `${tradeLabel} — got it! 👍\n\nWhere are you? (Suburb, postcode, or city)`,
-          quickReplies: ['Brisbane', 'Sydney', 'Melbourne', 'Gold Coast', 'Perth', 'Adelaide'],
-        },
-      ]);
-      setStep('location');
-      setIsLoading(false);
-      return;
-    }
-
-    if (step === 'location') {
-      setSelectedLocation(text.trim());
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'mojo',
-          content: `Nice, searching near ${text.trim()}.\n\nWhat's happening? (quick description helps me find the right person)`,
-          quickReplies: ['Just need a quote', 'Emergency / urgent', 'Routine maintenance', 'New install'],
-        },
-      ]);
-      setStep('problem');
-      setIsLoading(false);
-      return;
-    }
-
-    if (step === 'problem') {
-      // Got all 3 pieces, do the search
-      setStep('searching');
-      try {
-        const res = await fetch('/api/mojo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `I need a ${selectedTrade.replace(/_/g, ' ')} in ${selectedLocation}. ${text.trim()}`,
-            trade: selectedTrade,
-            location: selectedLocation,
-            problem: text.trim(),
-            history: [],
-          }),
-        });
-
-        const data = await res.json();
-
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'mojo',
-            content: data.message,
-            tradies: data.tradies || [],
-            quickReplies: data.tradies?.length > 0
-              ? ['Search again', 'Different trade', 'Different area']
-              : ['Try a different area', 'Try a different trade'],
-          },
-        ]);
-        setStep('results');
-      } catch {
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'mojo',
-            content: "Sorry, I hit a snag searching. Give it another go!",
-            quickReplies: ['Try again', 'Search again'],
-          },
-        ]);
-        setStep('results');
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    // Results stage — handle follow-ups
+    // ─── Results stage — handle follow-ups ───
     if (step === 'results') {
       const lower = text.toLowerCase();
-      if (lower.includes('search again') || lower.includes('start over') || lower.includes('different trade')) {
+      if (lower.includes('new search') || lower.includes('start over') || lower.includes('different trade')) {
         handleReset();
         setIsLoading(false);
         return;
@@ -206,7 +306,7 @@ export default function MojoWidget() {
           {
             role: 'mojo',
             content: 'No worries! Where else should I look?',
-            quickReplies: ['Brisbane', 'Sydney', 'Melbourne', 'Gold Coast', 'Perth'],
+            quickReplies: CITY_CHIPS,
           },
         ]);
         setStep('location');
@@ -215,7 +315,123 @@ export default function MojoWidget() {
       }
     }
 
-    // Fallback: send to API directly for freeform chat
+    // ─── Smart parse: try to extract trade + location from any message ───
+    const parsed = parseMessage(text);
+
+    // If we're in the trade step
+    if (step === 'trade') {
+      if (parsed.trade && parsed.location) {
+        // User gave us everything in one message! Skip ahead.
+        setSelectedTrade(parsed.trade);
+        setSelectedLocation(parsed.location);
+        const tradeLabel = tradeCategoryLabel(parsed.trade as TradeCategory);
+
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'mojo',
+            content: `${tradeCategoryIcon(parsed.trade as TradeCategory)} ${tradeLabel} in ${parsed.location} — searching now...`,
+          },
+        ]);
+
+        await doSearch(parsed.trade, parsed.location, parsed.problem || '');
+        return;
+      }
+
+      if (parsed.trade) {
+        // Got trade, need location
+        const tradeLabel = tradeCategoryLabel(parsed.trade as TradeCategory);
+        setSelectedTrade(parsed.trade);
+
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'mojo',
+            content: `${tradeCategoryIcon(parsed.trade as TradeCategory)} ${tradeLabel} — got it!\n\nWhere are you? (Suburb, postcode, or city)`,
+            quickReplies: CITY_CHIPS,
+          },
+        ]);
+        setStep('location');
+        setIsLoading(false);
+        return;
+      }
+
+      // Couldn't match a trade — quick reply might have been used
+      const tradeLower = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+      const chipMatch = POPULAR_TRADE_CHIPS.find(t =>
+        tradeLower.includes(t.label.toLowerCase()) || tradeLower === t.value.replace('_', ' ')
+      );
+      if (chipMatch) {
+        setSelectedTrade(chipMatch.value);
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'mojo',
+            content: `${chipMatch.emoji} ${chipMatch.label} — got it!\n\nWhere are you? (Suburb, postcode, or city)`,
+            quickReplies: CITY_CHIPS,
+          },
+        ]);
+        setStep('location');
+        setIsLoading(false);
+        return;
+      }
+
+      // Last resort — ask them to be more specific
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'mojo',
+          content: "Not sure I got that — what type of tradie do you need? You can tap one below or type something like \"plumber\" or \"solar installer\".",
+          quickReplies: POPULAR_TRADE_CHIPS.map(t => `${t.emoji} ${t.label}`),
+        },
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
+    // ─── Location step ───
+    if (step === 'location') {
+      const loc = parsed.location || text.trim();
+      setSelectedLocation(loc);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'mojo',
+          content: `Searching near ${loc}...\n\nAnything specific? (optional — or tap below to just search)`,
+          quickReplies: ['Just search', 'Need a quote', 'Emergency', 'Routine maintenance'],
+        },
+      ]);
+      setStep('problem');
+      setIsLoading(false);
+      return;
+    }
+
+    // ─── Problem step ───
+    if (step === 'problem') {
+      const problem = text.toLowerCase().includes('just search') ? '' : text.trim();
+      await doSearch(selectedTrade, selectedLocation, problem);
+      return;
+    }
+
+    // ─── Fallback: try to parse and search directly ───
+    if (parsed.trade && parsed.location) {
+      setSelectedTrade(parsed.trade);
+      setSelectedLocation(parsed.location);
+      const tradeLabel = tradeCategoryLabel(parsed.trade as TradeCategory);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'mojo',
+          content: `${tradeCategoryIcon(parsed.trade as TradeCategory)} ${tradeLabel} in ${parsed.location} — searching...`,
+        },
+      ]);
+      await doSearch(parsed.trade, parsed.location, parsed.problem || '');
+      return;
+    }
+
+    // Absolute fallback: send to API for freeform
     try {
       const res = await fetch('/api/mojo', {
         method: 'POST',
@@ -234,8 +450,8 @@ export default function MojoWidget() {
           content: data.message,
           tradies: data.tradies || [],
           quickReplies: data.tradies?.length > 0
-            ? ['Search again', 'Different trade']
-            : undefined,
+            ? ['New search', 'Different trade']
+            : ['New search'],
         },
       ]);
       if (data.tradies?.length > 0) setStep('results');
@@ -246,7 +462,7 @@ export default function MojoWidget() {
       ]);
     }
     setIsLoading(false);
-  }, [step, selectedTrade, selectedLocation, messages]);
+  }, [step, selectedTrade, selectedLocation, messages, doSearch, handleReset]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,7 +475,7 @@ export default function MojoWidget() {
 
   return (
     <>
-      {/* ─── Floating Button (Desktop: bottom-right, Mobile: bottom center) ─── */}
+      {/* ─── Floating Button ─── */}
       {!isOpen && (
         <button
           onClick={handleOpen}
@@ -441,9 +657,9 @@ export default function MojoWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
-                  step === 'trade' ? 'Type a trade or tap one above...'
+                  step === 'trade' ? "e.g. plumber in Brisbane, solar on the coast..."
                     : step === 'location' ? 'Suburb, postcode, or city...'
-                    : step === 'problem' ? "What's happening? e.g. 'leaking tap'"
+                    : step === 'problem' ? "What's happening? (or tap Just search)"
                     : 'Ask Mojo anything...'
                 }
                 className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-mojo/20 border border-border transition-all placeholder:text-muted/60"

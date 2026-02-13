@@ -1,19 +1,14 @@
 import { Sparkles } from 'lucide-react';
-import { tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
-import type { TradeCategory } from '@/types/database';
-
-const FOOTER_TRADES: TradeCategory[] = [
-  'plumber', 'electrician', 'builder', 'carpenter', 'painter', 'roofer',
-  'landscaper', 'solar', 'air_conditioning', 'tiler', 'handyman',
-  'pest_control', 'fencer', 'pool_builder', 'concreter', 'locksmith',
-  'cleaning', 'glazier', 'earthmoving', 'demolition',
-];
+import { tradeCategoryLabel, tradeCategoryIcon, TRADE_GROUPS } from '@/lib/utils';
 
 const FOOTER_CITIES = [
   'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
   'Gold Coast', 'Canberra', 'Newcastle', 'Sunshine Coast', 'Hobart',
   'Darwin', 'Townsville', 'Cairns', 'Geelong', 'Toowoomba', 'Wollongong',
 ];
+
+// Get top trades from each group for the footer (show breadth)
+const FOOTER_TRADES = TRADE_GROUPS.flatMap(g => g.trades.slice(0, 3));
 
 export default function Footer() {
   return (
@@ -88,6 +83,7 @@ export default function Footer() {
                 <li><a href="/plumber" className="text-xs text-white/50 hover:text-white transition-colors">Plumbers</a></li>
                 <li><a href="/electrician" className="text-xs text-white/50 hover:text-white transition-colors">Electricians</a></li>
                 <li><a href="/builder" className="text-xs text-white/50 hover:text-white transition-colors">Builders</a></li>
+                <li><a href="/solar" className="text-xs text-white/50 hover:text-white transition-colors">Solar Installers</a></li>
               </ul>
             </div>
 
