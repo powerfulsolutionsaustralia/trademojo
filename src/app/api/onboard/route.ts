@@ -75,7 +75,10 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    // 3. Create tradie + site + listing via SECURITY DEFINER function (bypasses RLS)
+    // 3. Auto-confirm email (bypasses email confirmation requirement)
+    await supabase.rpc('confirm_user_email', { p_user_id: userId });
+
+    // 4. Create tradie + site + listing via SECURITY DEFINER function (bypasses RLS)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('onboard_tradie', {
       p_user_id: userId,
       p_business_name: business_name,
