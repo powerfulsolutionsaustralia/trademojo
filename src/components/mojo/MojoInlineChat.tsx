@@ -128,13 +128,8 @@ export default function MojoInlineChat() {
         {/* Headlines — collapse when chatting */}
         {!hasConversation && (
           <>
-            <div className="mb-2 inline-flex items-center gap-2 bg-mojo/10 text-mojo text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              Powered by AI
-            </div>
-
             <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 leading-tight">
-              Meet <span className="text-mojo">Mojo</span> — Your AI Tradie Finder
+              Meet <span className="text-mojo">Mojo</span> — Your Tradie Finder
             </h1>
             <p className="text-muted text-base md:text-lg mb-8 max-w-lg mx-auto">
               Tell Mojo what you need and where — it&apos;ll find the top-rated tradies with real reviews and contact details.
@@ -145,7 +140,7 @@ export default function MojoInlineChat() {
         {/* Compact header when chatting */}
         {hasConversation && (
           <h2 className="font-[family-name:var(--font-outfit)] text-lg font-bold text-foreground mb-4">
-            <span className="text-mojo">Mojo</span> — AI Tradie Finder
+            <span className="text-mojo">Mojo</span> — Tradie Finder
           </h2>
         )}
 
