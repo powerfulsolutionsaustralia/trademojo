@@ -75,86 +75,33 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    // 3. Create tradie record (user is now authenticated via signUp session)
-    const { data: tradie, error: tradieError } = await supabase
-      .from('tradies')
-      .insert({
-        user_id: userId,
-        business_name,
-        slug: finalSlug,
-        owner_name: '',
-        email,
-        phone,
-        abn: null,
-        trade_category,
-        description: `${business_name} is a trusted ${tradeLabel.toLowerCase()}.`,
-        short_description: tradeLabel,
-        service_areas: [],
-        state: '',
-        postcode: '',
-        plan_tier: 'free',
-        is_active: true,
-        is_featured: false,
-        is_approved: true,
-        approved_at: new Date().toISOString(),
-        verification_notes: {},
-      })
-      .select()
-      .single();
+    // 3. Create tradie + site + listing via SECURITY DEFINER function (bypasses RLS)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('onboard_tradie', {
+      p_user_id: userId,
+      p_business_name: business_name,
+      p_slug: finalSlug,
+      p_email: email,
+      p_phone: phone,
+      p_trade_category: trade_category,
+      p_trade_label: tradeLabel,
+    });
 
-    if (tradieError || !tradie) {
-      console.error('Tradie record creation error:', tradieError);
+    if (rpcError) {
+      console.error('Onboard RPC error:', rpcError);
       return NextResponse.json(
-        { error: `Failed to create business profile: ${tradieError?.message || 'Unknown error'}` },
+        { error: `Failed to create business profile: ${rpcError.message}` },
         { status: 500 }
       );
     }
 
-    // 4. Create tradie_site record with auto-generated content
-    const { error: siteError } = await supabase.from('tradie_sites').insert({
-      tradie_id: tradie.id,
-      primary_color: '#F97316',
-      secondary_color: '#1E293B',
-      hero_headline: `Your Trusted Local ${tradeLabel}`,
-      hero_subheadline: `Licensed, insured ${tradeLabel.toLowerCase()}. Get a free quote today.`,
-      cta_text: 'Get a Free Quote',
-      services_list: [],
-      about_text: '',
-      show_booking: true,
-      show_reviews: true,
-      show_gallery: true,
-      testimonials: [],
-      meta_title: `${business_name} - ${tradeLabel}`,
-      meta_description: `${business_name} is a licensed ${tradeLabel.toLowerCase()}. Get a free quote today.`,
-    });
+    console.log('Tradie created via RPC, id:', rpcResult);
 
-    if (siteError) {
-      console.error('Tradie site creation error:', siteError);
-    }
-
-    // 5. Create directory listing
-    const { error: listingError } = await supabase.from('directory_listings').insert({
-      tradie_id: tradie.id,
-      trade_category,
-      title: `${business_name} - ${tradeLabel}`,
-      description: `Licensed ${tradeLabel.toLowerCase()}. Professional, reliable service.`,
-      suburbs: [],
-      state: '',
-      keywords: [tradeLabel.toLowerCase(), trade_category.replace(/_/g, ' ')],
-      schema_markup: {},
-      is_active: true,
-    });
-
-    if (listingError) {
-      console.error('Directory listing creation error:', listingError);
-    }
-
-    // 6. Send welcome email (non-blocking)
+    // 4. Send welcome email (non-blocking)
     sendWelcomeEmail(email, business_name, password, finalSlug).catch((err) =>
       console.error('Welcome email error:', err)
     );
 
-    // 7. Send admin alert (non-blocking)
+    // 5. Send admin alert (non-blocking)
     sendAdminAlert(
       `New signup: ${business_name}`,
       `
