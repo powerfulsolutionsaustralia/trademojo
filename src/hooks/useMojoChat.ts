@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { TRADE_GROUPS, tradeCategoryLabel, tradeCategoryIcon } from '@/lib/utils';
+import { TRADE_GROUPS, tradeCategoryLabel, tradeCategoryIcon, slugify } from '@/lib/utils';
 import type { TradeCategory } from '@/types/database';
-import type { MojoMessage, MojoTradieResult, ConversationStep } from '@/types/mojo';
+import type { MojoMessage, ConversationStep } from '@/types/mojo';
 
 // ─── All trades flat list for matching ─────────────────────────
 const ALL_TRADES = TRADE_GROUPS.flatMap(g =>
@@ -235,53 +235,25 @@ export function useMojoChat(options: UseMojoChatOptions = {}) {
     }, 0);
   }, []);
 
-  // ─── Execute search ────────────────────────────────────────
-  const doSearch = useCallback(async (trade: string, location: string, problem: string) => {
+  // ─── Execute search — navigate to results page ────────────────
+  const doSearch = useCallback(async (trade: string, location: string, _problem: string) => {
+    const tradeLabel = tradeCategoryLabel(trade as TradeCategory);
+    const locationSlug = slugify(location);
+
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'mojo',
+        content: `Taking you to ${tradeLabel.toLowerCase()}s near ${location}...`,
+      },
+    ]);
     setStep('searching');
     setIsLoading(true);
 
-    try {
-      const res = await fetch('/api/mojo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `I need a ${trade.replace(/_/g, ' ')} in ${location}. ${problem}`,
-          trade,
-          location,
-          problem,
-          history: [],
-        }),
-      });
+    // Brief delay so the user sees the message before navigating
+    await new Promise(resolve => setTimeout(resolve, 600));
 
-      const data = await res.json();
-      const tradeLabel = tradeCategoryLabel(trade as TradeCategory);
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'mojo',
-          content: data.tradies?.length > 0
-            ? `Found ${data.tradies.length} ${tradeLabel.toLowerCase()}${data.tradies.length !== 1 ? 's' : ''} near ${location}:`
-            : data.message || `No results found for ${tradeLabel.toLowerCase()} in ${location}. Try a different area?`,
-          tradies: data.tradies || [],
-          quickReplies: data.tradies?.length > 0
-            ? ['New search', 'Different area', 'Different trade']
-            : ['Try a different area', 'Try a different trade'],
-        },
-      ]);
-      setStep('results');
-    } catch {
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'mojo',
-          content: "Sorry, hit a snag. Give it another go!",
-          quickReplies: ['Try again', 'New search'],
-        },
-      ]);
-      setStep('results');
-    }
-    setIsLoading(false);
+    window.location.href = `/${trade}/${locationSlug}`;
   }, []);
 
   // ─── Send message ───────────────────────────────────────────
@@ -432,28 +404,11 @@ export function useMojoChat(options: UseMojoChatOptions = {}) {
       return;
     }
 
-    // ─── Location step ───
+    // ─── Location step — go straight to results page ───
     if (currentStep === 'location') {
       const loc = parsed.location || text.trim();
       setSelectedLocation(loc);
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'mojo',
-          content: `Searching near ${loc}...\n\nAnything specific? (optional — or tap below to just search)`,
-          quickReplies: ['Just search', 'Need a quote', 'Emergency', 'Routine maintenance'],
-        },
-      ]);
-      setStep('problem');
-      setIsLoading(false);
-      return;
-    }
-
-    // ─── Problem step ───
-    if (currentStep === 'problem') {
-      const problem = text.toLowerCase().includes('just search') ? '' : text.trim();
-      await doSearch(selectedTradeRef.current, selectedLocationRef.current, problem);
+      await doSearch(selectedTradeRef.current, loc, '');
       return;
     }
 
@@ -474,7 +429,7 @@ export function useMojoChat(options: UseMojoChatOptions = {}) {
       return;
     }
 
-    // Absolute fallback: send to API for freeform
+    // Absolute fallback: send to API for freeform understanding
     try {
       const res = await fetch('/api/mojo', {
         method: 'POST',
@@ -486,18 +441,21 @@ export function useMojoChat(options: UseMojoChatOptions = {}) {
       });
 
       const data = await res.json();
+
+      // If API found results, it means it parsed a trade+location — navigate
+      if (data.tradies?.length > 0 && data.query?.trade && data.query?.location) {
+        await doSearch(data.query.trade, data.query.location, '');
+        return;
+      }
+
       setMessages(prev => [
         ...prev,
         {
           role: 'mojo',
           content: data.message,
-          tradies: data.tradies || [],
-          quickReplies: data.tradies?.length > 0
-            ? ['New search', 'Different trade']
-            : ['New search'],
+          quickReplies: ['New search'],
         },
       ]);
-      if (data.tradies?.length > 0) setStep('results');
     } catch {
       setMessages(prev => [
         ...prev,

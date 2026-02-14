@@ -170,7 +170,6 @@ function MojoWidgetInner() {
                 placeholder={
                   step === 'trade' ? "e.g. plumber in Brisbane, solar on the coast..."
                     : step === 'location' ? 'Suburb, postcode, or city...'
-                    : step === 'problem' ? "What's happening? (or tap Just search)"
                     : 'Ask Mojo anything...'
                 }
                 className="flex-1 bg-gray-50 rounded-xl px-4 py-2.5 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-mojo/20 border border-border transition-all placeholder:text-muted/60"

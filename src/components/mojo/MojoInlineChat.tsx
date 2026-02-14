@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Star, Shield, Zap, ArrowRight } from 'lucide-react';
 import MojoMascot from './MojoMascot';
 import MojoChatBubble from './MojoChatBubble';
-import MojoTradieCard from './MojoTradieCard';
 import MojoQuickReplies from './MojoQuickReplies';
 import MojoLoadingDots from './MojoLoadingDots';
 import { useMojoChat, POPULAR_TRADE_CHIPS } from '@/hooks/useMojoChat';
@@ -34,8 +33,6 @@ export default function MojoInlineChat() {
     isLoading,
     step,
     sendMessage,
-    handleReset,
-    startConversation,
   } = useMojoChat({ autoStart: true });
 
   // Typewriter effect for placeholder (only when no messages beyond the initial one)
@@ -151,7 +148,6 @@ export default function MojoInlineChat() {
               placeholder={showTypewriter ? placeholder + '|' : (
                 step === 'trade' ? 'e.g. plumber in Brisbane, solar on the coast...'
                   : step === 'location' ? 'Suburb, postcode, or city...'
-                  : step === 'problem' ? "What's happening? (or tap Just search)"
                   : 'Ask Mojo anything...'
               )}
               className="flex-1 py-4 px-2 text-foreground placeholder:text-muted/40 bg-transparent outline-none text-base"
@@ -178,14 +174,6 @@ export default function MojoInlineChat() {
                 <div key={i}>
                   <MojoChatBubble role={msg.role} content={msg.content} />
 
-                  {msg.tradies && msg.tradies.length > 0 && (
-                    <div className="mt-2 space-y-2 pl-1">
-                      {msg.tradies.map((tradie) => (
-                        <MojoTradieCard key={tradie.id} tradie={tradie} />
-                      ))}
-                    </div>
-                  )}
-
                   {msg.quickReplies && msg.quickReplies.length > 0 && i === messages.slice(1).length - 1 && !isLoading && (
                     <MojoQuickReplies replies={msg.quickReplies} onReply={sendMessage} />
                   )}
@@ -196,15 +184,6 @@ export default function MojoInlineChat() {
               <div ref={chatEndRef} />
             </div>
 
-            {/* Reset button */}
-            {step === 'results' && (
-              <button
-                onClick={handleReset}
-                className="mt-3 text-xs text-mojo hover:text-mojo-dark transition-colors font-medium cursor-pointer"
-              >
-                Start a new search
-              </button>
-            )}
           </div>
         )}
 
