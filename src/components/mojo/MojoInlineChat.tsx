@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Star, Shield, Zap, ArrowRight } from 'lucide-react';
-import MojoMascot from './MojoMascot';
-import MojoChatBubble from './MojoChatBubble';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Star, Shield, Zap, ArrowRight, MessageCircle } from 'lucide-react';
+import Image from 'next/image';
 import MojoQuickReplies from './MojoQuickReplies';
 import MojoLoadingDots from './MojoLoadingDots';
 import { useMojoChat, POPULAR_TRADE_CHIPS } from '@/hooks/useMojoChat';
@@ -23,7 +22,7 @@ export default function MojoInlineChat() {
   const [isTyping, setIsTyping] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     messages,
@@ -67,12 +66,17 @@ export default function MojoInlineChat() {
     }
   }, [charIdx, exampleIdx, isTyping, showTypewriter]);
 
-  // Auto-scroll chat to bottom when new messages arrive
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  // Scroll chat container (NOT page) when new messages arrive
+  const scrollToBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading, scrollToBottom]);
 
   // Listen for mojo-trade-selected events from LocationAwareTradeButtons
   useEffect(() => {
@@ -99,6 +103,7 @@ export default function MojoInlineChat() {
   };
 
   const hasConversation = messages.length > 1;
+  const chatMessages = messages.slice(1); // skip the initial greeting in messages array
 
   // Dynamic placeholder based on step
   const inputPlaceholder = showTypewriter
@@ -110,129 +115,174 @@ export default function MojoInlineChat() {
         : 'Ask Mojo anything...';
 
   return (
-    <section id="mojo-hero" className="relative pt-8 pb-12 md:pt-12 md:pb-20 px-4 overflow-hidden">
+    <section id="mojo-hero" className="relative pt-8 pb-12 md:pt-12 md:pb-16 px-4 overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-mojo/5 via-primary/3 to-transparent pointer-events-none" />
 
-      {/* Floating decorative elements */}
-      <div className="absolute top-20 left-[10%] w-16 h-16 rounded-full bg-primary/5 blur-2xl" />
-      <div className="absolute top-40 right-[15%] w-24 h-24 rounded-full bg-mojo/5 blur-3xl" />
-      <div className="absolute bottom-20 left-[20%] w-20 h-20 rounded-full bg-accent/5 blur-2xl" />
-
-      <div className="relative z-10 max-w-2xl mx-auto text-center">
-        {/* Mojo Mascot — shrinks when chatting */}
-        <div className={`flex justify-center transition-all duration-300 ${hasConversation ? 'mb-3' : 'mb-6'}`}>
-          <MojoMascot size={hasConversation ? 'md' : 'xl'} />
-        </div>
-
-        {/* Headlines — collapse when chatting */}
+      <div className="relative z-10 max-w-xl mx-auto">
+        {/* ═══ IDLE STATE — Hero layout ═══ */}
         {!hasConversation && (
-          <>
+          <div className="text-center">
+            {/* Mascot */}
+            <div className="flex justify-center mb-4">
+              <div className="w-24 h-24 md:w-28 md:h-28 relative">
+                <Image
+                  src="/mojo.png"
+                  alt="Mojo"
+                  width={112}
+                  height={112}
+                  className="w-full h-full object-contain drop-shadow-lg"
+                  priority
+                />
+              </div>
+            </div>
+
             <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 leading-tight">
               Meet <span className="text-mojo">Mojo</span> — Your Tradie Finder
             </h1>
             <p className="text-muted text-base md:text-lg mb-8 max-w-lg mx-auto">
               Tell Mojo what you need and where — it&apos;ll find the top-rated tradies with real reviews and contact details.
             </p>
-          </>
-        )}
 
-        {/* Compact header when chatting */}
-        {hasConversation && (
-          <h2 className="font-[family-name:var(--font-outfit)] text-lg font-bold text-foreground mb-4">
-            <span className="text-mojo">Mojo</span> — Tradie Finder
-          </h2>
-        )}
-
-        {/* ─── Chat Card ─── */}
-        {/* Contains: messages (scrollable) + input (pinned bottom) */}
-        <div className="max-w-xl mx-auto">
-          {hasConversation ? (
-            <div className="bg-white rounded-2xl shadow-lg border border-border/60 overflow-hidden flex flex-col">
-              {/* Messages area — scrolls internally */}
-              <div className="max-h-[40vh] overflow-y-auto px-4 py-4 space-y-3 bg-gray-50/30">
-                {messages.slice(1).map((msg, i) => (
-                  <div key={i}>
-                    <MojoChatBubble role={msg.role} content={msg.content} />
-
-                    {msg.quickReplies && msg.quickReplies.length > 0 && i === messages.slice(1).length - 1 && !isLoading && (
-                      <MojoQuickReplies replies={msg.quickReplies} onReply={sendMessage} />
-                    )}
-                  </div>
-                ))}
-
-                {isLoading && <MojoLoadingDots />}
-                <div ref={chatEndRef} />
+            {/* Search input */}
+            <form onSubmit={handleSubmit} className="mb-4">
+              <div className="relative flex items-center bg-white border-2 border-mojo/20 rounded-2xl shadow-lg hover:border-mojo/40 focus-within:border-mojo/60 focus-within:shadow-xl transition-all">
+                <div className="pl-4 pr-2">
+                  <MessageCircle className="w-5 h-5 text-mojo" />
+                </div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={inputPlaceholder}
+                  className="flex-1 py-4 px-2 text-foreground placeholder:text-muted/40 bg-transparent outline-none text-base"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="mr-2 p-3 bg-mojo text-white rounded-xl hover:bg-mojo/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
               </div>
+            </form>
 
-              {/* Input — pinned at bottom of card */}
-              <div className="border-t border-border/60 bg-white px-3 py-3">
-                <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                  <div className="pl-2">
-                    <Sparkles className="w-4 h-4 text-mojo/60" />
-                  </div>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={inputPlaceholder}
-                    className="flex-1 py-2.5 px-2 text-foreground placeholder:text-muted/40 bg-transparent outline-none text-sm"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || isLoading}
-                    className="p-2.5 bg-mojo text-white rounded-xl hover:bg-mojo/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
+            {/* Quick chips */}
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              {POPULAR_TRADE_CHIPS.slice(0, 5).map((chip) => (
+                <button
+                  key={chip.label}
+                  onClick={() => sendMessage(`${chip.emoji} ${chip.label}`)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-border rounded-full text-sm font-medium text-foreground hover:border-mojo hover:text-mojo hover:shadow-sm transition-all cursor-pointer"
+                >
+                  {chip.emoji} {chip.label}
+                  <ArrowRight className="w-3 h-3 opacity-50" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CHATTING STATE — Compact chat card ═══ */}
+        {hasConversation && (
+          <div className="bg-white rounded-2xl shadow-lg border border-border/40 overflow-hidden">
+            {/* Chat header */}
+            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/40 bg-gradient-to-r from-mojo/5 to-transparent">
+              <div className="w-8 h-8 relative flex-shrink-0">
+                <Image
+                  src="/mojo.png"
+                  alt="Mojo"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="text-left">
+                <h2 className="text-sm font-bold text-foreground leading-tight">Mojo</h2>
+                <p className="text-[10px] text-muted leading-tight">Tradie Finder</p>
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-[10px] text-muted">Online</span>
               </div>
             </div>
-          ) : (
-            /* Initial state — big search input + quick chips */
-            <>
-              <form onSubmit={handleSubmit} className="mb-4">
-                <div className="relative flex items-center bg-white border-2 border-mojo/20 rounded-2xl shadow-lg hover:border-mojo/40 focus-within:border-mojo/60 focus-within:shadow-xl transition-all">
-                  <div className="pl-4 pr-2">
-                    <Sparkles className="w-5 h-5 text-mojo" />
-                  </div>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={inputPlaceholder}
-                    className="flex-1 py-4 px-2 text-foreground placeholder:text-muted/40 bg-transparent outline-none text-base"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || isLoading}
-                    className="mr-2 p-3 bg-mojo text-white rounded-xl hover:bg-mojo/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </form>
 
-              {/* Quick search chips */}
-              <div className="flex flex-wrap justify-center gap-2 mb-8">
-                {POPULAR_TRADE_CHIPS.slice(0, 5).map((chip) => (
-                  <button
-                    key={chip.label}
-                    onClick={() => sendMessage(`${chip.emoji} ${chip.label}`)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-border rounded-full text-sm font-medium text-foreground hover:border-mojo hover:text-mojo hover:shadow-sm transition-all cursor-pointer"
-                  >
-                    {chip.emoji} {chip.label}
-                    <ArrowRight className="w-3 h-3 opacity-50" />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+            {/* Messages area — scrolls internally, page stays put */}
+            <div
+              ref={messagesContainerRef}
+              className="max-h-[35vh] min-h-[120px] overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50/50"
+            >
+              {chatMessages.map((msg, i) => (
+                <div key={i}>
+                  {/* Message bubble */}
+                  <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {msg.role === 'mojo' && (
+                      <div className="w-6 h-6 relative flex-shrink-0 mr-2 mt-1">
+                        <Image src="/mojo.png" alt="" width={24} height={24} className="w-full h-full object-contain" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-mojo text-white rounded-br-sm'
+                          : 'bg-white text-foreground border border-border/60 rounded-bl-sm shadow-sm'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+
+                  {/* Quick replies (only on last mojo message) */}
+                  {msg.quickReplies && msg.quickReplies.length > 0 && i === chatMessages.length - 1 && !isLoading && (
+                    <div className="ml-8 mt-1.5">
+                      <MojoQuickReplies replies={msg.quickReplies} onReply={sendMessage} />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="w-6 h-6 relative flex-shrink-0 mr-2 mt-1">
+                    <Image src="/mojo.png" alt="" width={24} height={24} className="w-full h-full object-contain" />
+                  </div>
+                  <div className="bg-white border border-border/60 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-mojo/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 bg-mojo/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 bg-mojo/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input — pinned at bottom */}
+            <div className="border-t border-border/40 bg-white px-3 py-2.5">
+              <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={inputPlaceholder}
+                  className="flex-1 py-2 px-3 text-foreground placeholder:text-muted/40 bg-gray-50 rounded-xl outline-none text-sm border border-border/40 focus:border-mojo/40 transition-colors"
+                  disabled={isLoading}
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="p-2.5 bg-mojo text-white rounded-xl hover:bg-mojo/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex-shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Trust line */}
         <div className={`flex flex-wrap items-center justify-center gap-4 text-xs text-muted ${hasConversation ? 'mt-4' : 'mt-0'}`}>
