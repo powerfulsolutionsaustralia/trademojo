@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Rocket, CheckCircle, Copy, ExternalLink, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Rocket, CheckCircle, Copy, ExternalLink, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { TRADE_CATEGORIES, AUSTRALIAN_STATES, tradeCategoryLabel, slugify } from '@/lib/utils';
 import type { TradeCategory } from '@/types/database';
@@ -29,6 +29,8 @@ interface Result {
   website_url: string;
   dashboard_url: string;
   temp_password: string;
+  is_approved: boolean;
+  message: string;
 }
 
 export default function OnboardPage() {
@@ -51,6 +53,7 @@ export default function OnboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState('');
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -70,6 +73,7 @@ export default function OnboardPage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setError('');
     try {
       const res = await fetch('/api/onboard', {
         method: 'POST',
@@ -84,9 +88,12 @@ export default function OnboardPage() {
       const json = await res.json();
       if (json.success) {
         setResult(json);
+      } else {
+        setError(json.error || 'Something went wrong. Please try again.');
       }
     } catch (err) {
       console.error('Onboard error:', err);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -102,16 +109,29 @@ export default function OnboardPage() {
 
   // Success screen
   if (result) {
+    const approved = result.is_approved;
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16">
         <div className="max-w-lg w-full bg-surface rounded-2xl border border-border shadow-xl p-8 text-center">
-          <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-6">
-            <Rocket className="w-10 h-10 text-accent" />
+          <div className={`w-20 h-20 rounded-full ${approved ? 'bg-accent/10' : 'bg-mojo/10'} flex items-center justify-center mx-auto mb-6`}>
+            {approved ? (
+              <ShieldCheck className="w-10 h-10 text-accent" />
+            ) : (
+              <Clock className="w-10 h-10 text-mojo" />
+            )}
           </div>
           <h1 className="font-[family-name:var(--font-outfit)] text-3xl font-bold text-foreground mb-2">
-            Website is Live!
+            {approved ? 'You\'re Live!' : 'Application Submitted!'}
           </h1>
-          <p className="text-muted mb-8">{data.business_name} is now on TradeMojo</p>
+          <p className="text-muted mb-2">{data.business_name} is now on TradeMojo</p>
+          {approved ? (
+            <p className="text-sm text-accent font-medium mb-8">✅ Verified and live in the directory</p>
+          ) : (
+            <div className="bg-mojo/5 border border-mojo/20 rounded-xl p-4 mb-8 text-left">
+              <p className="text-sm text-mojo font-semibold mb-1">⏳ Under Review</p>
+              <p className="text-sm text-muted">Your listing is being verified and will be live shortly. We&apos;ll email you at <strong>{data.email}</strong> once approved.</p>
+            </div>
+          )}
 
           <div className="space-y-4 text-left">
             <div className="bg-background rounded-xl border border-border p-4">
@@ -124,6 +144,7 @@ export default function OnboardPage() {
                   {copied === 'url' ? <CheckCircle className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted" />}
                 </button>
               </div>
+              {!approved && <p className="text-xs text-muted mt-2">Your website is ready — it will appear in the directory once approved.</p>}
             </div>
 
             <div className="bg-background rounded-xl border border-border p-4">
@@ -136,14 +157,8 @@ export default function OnboardPage() {
                     {copied === 'pass' ? <CheckCircle className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted" />}
                   </button>
                 </div>
+                <p className="text-xs text-muted mt-1">Save these credentials — you&apos;ll need them to manage your listing and leads.</p>
               </div>
-            </div>
-
-            <div className="bg-background rounded-xl border border-border p-4">
-              <label className="text-xs text-muted uppercase tracking-wider font-semibold">Custom Domain</label>
-              <p className="text-sm text-muted mt-1">
-                If they have a domain, add a CNAME record pointing to <code className="bg-border px-1.5 py-0.5 rounded text-xs font-mono">cname.vercel-dns.com</code>
-              </p>
             </div>
           </div>
 
@@ -153,11 +168,11 @@ export default function OnboardPage() {
                 <ExternalLink className="w-4 h-4" /> View Site
               </Button>
             </a>
-            <button onClick={() => { setResult(null); setStep(1); setData({ business_name: '', owner_name: '', phone: '', email: '', trade_category: '', abn: '', state: '', service_areas: '', description: '', services_list: '', hero_headline: '', primary_color: '#F97316', about_text: '' }); }} className="flex-1">
-              <Button variant="outline" size="md" className="w-full">
-                Create Another
+            <a href={result.dashboard_url} className="flex-1">
+              <Button variant="outline" size="md" className="w-full gap-1.5">
+                <Rocket className="w-4 h-4" /> Dashboard
               </Button>
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -363,13 +378,19 @@ export default function OnboardPage() {
               </div>
             </div>
 
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button variant="outline" size="lg" className="gap-2" onClick={() => setStep(3)}>
                 <ArrowLeft className="w-5 h-5" /> Back
               </Button>
               <Button variant="accent" size="lg" className="flex-1 gap-2" onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? (
-                  <>Creating...</>
+                  <><span className="animate-spin mr-1">⏳</span> Creating your website...</>
                 ) : (
                   <><Rocket className="w-5 h-5" /> Launch Website</>
                 )}

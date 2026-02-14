@@ -1,8 +1,8 @@
 import Navbar from '@/components/directory/Navbar';
-import HeroSearch from '@/components/directory/HeroSearch';
+import MojoHero from '@/components/mojo/MojoHero';
 import Footer from '@/components/directory/Footer';
 import { tradeCategoryLabel, tradeCategoryIcon, TRADE_GROUPS } from '@/lib/utils';
-import { MapPin, Star, Shield, Zap, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 const POPULAR_LOCATIONS = [
@@ -29,39 +29,8 @@ export default function Home() {
     <>
       <Navbar />
 
-      {/* Hero — Search above the fold */}
-      <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/2 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <h1 className="font-[family-name:var(--font-outfit)] text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-3 leading-tight">
-            Find a Tradie Near You
-          </h1>
-          <p className="text-muted text-base mb-8 max-w-md mx-auto">
-            Enter your suburb, pick a trade, and see the highest-rated businesses with contact details.
-          </p>
-
-          <HeroSearch />
-
-          {/* Trust line */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-xs text-muted">
-            <div className="flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5 text-yellow-500" />
-              Real Google Reviews
-            </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-accent" />
-              Verified Businesses
-            </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-primary" />
-              100% Free
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero — Mojo front and centre */}
+      <MojoHero />
 
       {/* Browse by Trade — Grouped */}
       <section className="py-12 px-4 bg-surface" id="trades">

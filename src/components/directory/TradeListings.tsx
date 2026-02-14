@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapPin, Star, Phone, Globe, ExternalLink, Loader2, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { MapPin, Star, Phone, Globe, ExternalLink, Loader2, Clock, MessageSquare, ChevronDown, ChevronUp, ShieldCheck, Crown } from 'lucide-react';
 import type { TradeCategory } from '@/types/database';
 import { tradeCategoryLabel, tradeCategoryPageTitle } from '@/lib/utils';
 
@@ -29,6 +29,9 @@ interface Listing {
   reviews?: Review[];
   lat: number;
   lng: number;
+  is_registered?: boolean;
+  plan_tier?: string;
+  slug?: string;
 }
 
 interface TradeListingsProps {
@@ -80,6 +83,8 @@ function ReviewSnippet({ review }: { review: Review }) {
 function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
   const [showReviews, setShowReviews] = useState(false);
   const hasReviews = listing.reviews && listing.reviews.length > 0;
+  const isRegistered = listing.is_registered;
+  const isPremium = listing.plan_tier === 'premium' || listing.plan_tier === 'pro';
 
   // Clean the website URL for display
   const displayUrl = listing.website
@@ -87,7 +92,27 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
     : '';
 
   return (
-    <div className="bg-white rounded-2xl border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-200 group">
+    <div className={`bg-white rounded-2xl border transition-all duration-200 group ${
+      isRegistered
+        ? 'border-mojo/30 hover:border-mojo/50 hover:shadow-lg ring-1 ring-mojo/10'
+        : 'border-border hover:border-primary/30 hover:shadow-lg'
+    }`}>
+      {/* Verified banner for registered businesses */}
+      {isRegistered && (
+        <div className="bg-gradient-to-r from-mojo/5 to-primary/5 border-b border-mojo/10 rounded-t-2xl px-5 sm:px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-mojo" />
+            <span className="text-xs font-bold text-mojo uppercase tracking-wider">TradeMojo Verified</span>
+          </div>
+          {isPremium && (
+            <div className="flex items-center gap-1 text-xs font-semibold text-primary">
+              <Crown className="w-3.5 h-3.5" />
+              Premium
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main card body */}
       <div className="p-5 sm:p-6">
         <div className="flex gap-4">
@@ -95,9 +120,11 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
           <div className="shrink-0">
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                rank <= 3
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-500'
+                isRegistered
+                  ? 'bg-mojo text-white'
+                  : rank <= 3
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-500'
               }`}
             >
               {rank}
@@ -108,9 +135,13 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
           <div className="flex-1 min-w-0">
             {/* Top row: Name + open status */}
             <div className="flex items-start justify-between gap-3">
-              <h3 className="font-[family-name:var(--font-outfit)] font-bold text-foreground text-lg leading-tight group-hover:text-primary transition-colors truncate">
-                {listing.business_name}
-              </h3>
+              <div className="min-w-0">
+                <h3 className={`font-[family-name:var(--font-outfit)] font-bold text-lg leading-tight transition-colors truncate ${
+                  isRegistered ? 'text-foreground group-hover:text-mojo' : 'text-foreground group-hover:text-primary'
+                }`}>
+                  {listing.business_name}
+                </h3>
+              </div>
               {listing.is_open !== undefined && (
                 <span
                   className={`shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
@@ -149,7 +180,9 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
               {listing.phone && (
                 <a
                   href={`tel:${listing.phone.replace(/\s/g, '')}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-dark transition-colors"
+                  className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors ${
+                    isRegistered ? 'text-mojo hover:text-mojo/80' : 'text-primary hover:text-primary-dark'
+                  }`}
                 >
                   <Phone className="w-3.5 h-3.5" />
                   {listing.phone}
@@ -175,7 +208,9 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
           {listing.phone && (
             <a
               href={`tel:${listing.phone.replace(/\s/g, '')}`}
-              className="inline-flex items-center justify-center gap-2 py-2.5 px-5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors shadow-sm hover:shadow-md"
+              className={`inline-flex items-center justify-center gap-2 py-2.5 px-5 text-white rounded-xl text-sm font-bold transition-colors shadow-sm hover:shadow-md ${
+                isRegistered ? 'bg-mojo hover:bg-mojo/90' : 'bg-primary hover:bg-primary-dark'
+              }`}
             >
               <Phone className="w-4 h-4" />
               Call Now
@@ -189,19 +224,31 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
               className="inline-flex items-center gap-2 py-2.5 px-4 border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary transition-colors"
             >
               <Globe className="w-3.5 h-3.5" />
-              Visit Website
+              {isRegistered && listing.slug ? 'View Profile' : 'Visit Website'}
             </a>
           )}
-          <a
-            href={`https://www.google.com/maps/place/?q=place_id:${listing.place_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 py-2.5 px-4 border border-border rounded-xl text-sm font-medium text-muted hover:border-primary hover:text-primary transition-colors"
-            title="View on Google Maps"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Directions
-          </a>
+          {!isRegistered && (
+            <a
+              href={`https://www.google.com/maps/place/?q=place_id:${listing.place_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 py-2.5 px-4 border border-border rounded-xl text-sm font-medium text-muted hover:border-primary hover:text-primary transition-colors"
+              title="View on Google Maps"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Directions
+            </a>
+          )}
+
+          {/* Get Quote button for registered businesses */}
+          {isRegistered && listing.slug && (
+            <a
+              href={`/t/${listing.slug}#quote`}
+              className="inline-flex items-center gap-2 py-2.5 px-4 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-bold hover:bg-primary/20 transition-colors"
+            >
+              Get Free Quote
+            </a>
+          )}
 
           {/* Review toggle */}
           {hasReviews && (
@@ -239,6 +286,7 @@ export default function TradeListings({ trade, location, state, limit, showTitle
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [registeredCount, setRegisteredCount] = useState(0);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -254,6 +302,7 @@ export default function TradeListings({ trade, location, state, limit, showTitle
 
         if (data.results) {
           setListings(limit ? data.results.slice(0, limit) : data.results);
+          setRegisteredCount(data.registered_count || 0);
         }
       } catch {
         setError(true);
@@ -310,6 +359,11 @@ export default function TradeListings({ trade, location, state, limit, showTitle
             {location && location !== 'Australia' ? ` in ${location}` : ''} found
           </h2>
           <div className="flex items-center gap-3 text-xs text-muted">
+            {registeredCount > 0 && (
+              <span className="flex items-center gap-1 text-mojo font-semibold">
+                <ShieldCheck className="w-3 h-3" /> {registeredCount} verified
+              </span>
+            )}
             {withPhone > 0 && (
               <span className="flex items-center gap-1">
                 <Phone className="w-3 h-3" /> {withPhone} with phone

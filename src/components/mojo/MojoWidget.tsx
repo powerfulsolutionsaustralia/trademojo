@@ -207,6 +207,26 @@ export default function MojoWidget() {
     }
   }, [isOpen]);
 
+  // Store pending search from MojoHero
+  const [pendingSearch, setPendingSearch] = useState<string | null>(null);
+
+  // Listen for mojo-search events from MojoHero
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.query) {
+        setIsOpen(true);
+        if (messages.length === 0) {
+          startConversation();
+        }
+        setPendingSearch(detail.query);
+      }
+    };
+    window.addEventListener('mojo-search', handler);
+    return () => window.removeEventListener('mojo-search', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
+
   const handleOpen = () => {
     setIsOpen(true);
     if (messages.length === 0) {
@@ -473,17 +493,41 @@ export default function MojoWidget() {
     sendMessage(reply);
   };
 
+  // Process pending search from MojoHero after sendMessage is available
+  useEffect(() => {
+    if (pendingSearch && isOpen && messages.length > 0) {
+      const timer = setTimeout(() => {
+        sendMessage(pendingSearch);
+        setPendingSearch(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSearch, isOpen, messages.length]);
+
   return (
     <>
       {/* ─── Floating Button ─── */}
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-mojo text-white px-5 py-3.5 rounded-full shadow-xl shadow-mojo/30 hover:shadow-2xl hover:shadow-mojo/40 hover:scale-105 transition-all duration-200 group md:bottom-6 md:right-6"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-mojo text-white pl-3 pr-5 py-2.5 rounded-full shadow-xl shadow-mojo/30 hover:shadow-2xl hover:shadow-mojo/40 hover:scale-105 transition-all duration-200 group md:bottom-6 md:right-6"
           aria-label="Open Mojo assistant"
         >
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors overflow-hidden p-0.5">
+            <svg viewBox="0 0 200 200" className="w-full h-full">
+              <circle cx="100" cy="100" r="42" fill="#A8956B" />
+              <circle cx="62" cy="68" r="14" fill="#8B7355" />
+              <circle cx="62" cy="68" r="9" fill="#C4A882" />
+              <circle cx="138" cy="68" r="14" fill="#8B7355" />
+              <circle cx="138" cy="68" r="9" fill="#C4A882" />
+              <circle cx="85" cy="92" r="5" fill="#2D1B0E" />
+              <circle cx="115" cy="92" r="5" fill="#2D1B0E" />
+              <ellipse cx="100" cy="104" rx="6" ry="4" fill="#2D1B0E" />
+              <path d="M92 110 Q100 117 108 110" stroke="#2D1B0E" strokeWidth="2" fill="none" strokeLinecap="round" />
+              <path d="M60 80 Q60 58 100 56 Q140 58 140 80" fill="#F97316" />
+              <rect x="55" y="77" width="90" height="7" rx="3.5" fill="#F97316" />
+            </svg>
           </div>
           <span className="font-semibold text-sm">Ask Mojo</span>
         </button>
@@ -495,8 +539,20 @@ export default function MojoWidget() {
           {/* Header */}
           <div className="bg-mojo text-white px-4 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center overflow-hidden p-0.5">
+                <svg viewBox="0 0 200 200" className="w-full h-full">
+                  <circle cx="100" cy="100" r="42" fill="#A8956B" />
+                  <circle cx="62" cy="68" r="14" fill="#8B7355" />
+                  <circle cx="62" cy="68" r="9" fill="#C4A882" />
+                  <circle cx="138" cy="68" r="14" fill="#8B7355" />
+                  <circle cx="138" cy="68" r="9" fill="#C4A882" />
+                  <circle cx="85" cy="92" r="5" fill="#2D1B0E" />
+                  <circle cx="115" cy="92" r="5" fill="#2D1B0E" />
+                  <ellipse cx="100" cy="104" rx="6" ry="4" fill="#2D1B0E" />
+                  <path d="M92 110 Q100 117 108 110" stroke="#2D1B0E" strokeWidth="2" fill="none" strokeLinecap="round" />
+                  <path d="M60 80 Q60 58 100 56 Q140 58 140 80" fill="#F97316" />
+                  <rect x="55" y="77" width="90" height="7" rx="3.5" fill="#F97316" />
+                </svg>
               </div>
               <div>
                 <div className="font-semibold text-sm leading-tight">Mojo</div>

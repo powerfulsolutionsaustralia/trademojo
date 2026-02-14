@@ -127,6 +127,7 @@ function getDemoTradie(slug: string): { tradie: Tradie; site: TradieSite } {
     plan_tier: 'pro',
     is_active: true,
     is_featured: false,
+    is_approved: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

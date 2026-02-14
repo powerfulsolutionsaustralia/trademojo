@@ -1,21 +1,8 @@
 'use client';
 
 import { Users, Calendar, Star, TrendingUp, ArrowUpRight, Phone, ExternalLink } from 'lucide-react';
+import { useDashboard } from './layout';
 import Button from '@/components/ui/Button';
-
-const stats = [
-  { label: 'New Leads', value: '12', change: '+3 this week', icon: Users, color: 'text-primary bg-primary/10' },
-  { label: 'Bookings', value: '5', change: '2 upcoming', icon: Calendar, color: 'text-mojo bg-mojo/10' },
-  { label: 'Reviews Sent', value: '8', change: '5 completed', icon: Star, color: 'text-yellow-500 bg-yellow-50' },
-  { label: 'Conversion', value: '42%', change: '+8% vs last month', icon: TrendingUp, color: 'text-accent bg-accent/10' },
-];
-
-const recentLeads = [
-  { id: 1, name: 'Sarah Mitchell', service: 'Emergency Repair', urgency: 'high', phone: '0412 345 678', time: '2 hours ago' },
-  { id: 2, name: 'James Wong', service: 'Installation', urgency: 'medium', phone: '0423 456 789', time: '5 hours ago' },
-  { id: 3, name: 'Emma Davis', service: 'Maintenance', urgency: 'low', phone: '0434 567 890', time: '1 day ago' },
-  { id: 4, name: 'Michael Brown', service: 'Inspection', urgency: 'medium', phone: '0445 678 901', time: '2 days ago' },
-];
 
 const urgencyColors: Record<string, string> = {
   low: 'bg-blue-100 text-blue-700',
@@ -25,10 +12,48 @@ const urgencyColors: Record<string, string> = {
 };
 
 export default function DashboardOverview() {
+  const data = useDashboard();
+
+  const stats = [
+    {
+      label: 'New Leads',
+      value: String(data?.stats?.new_leads || 0),
+      change: `${data?.stats?.this_week_leads || 0} this week`,
+      icon: Users,
+      color: 'text-primary bg-primary/10',
+    },
+    {
+      label: 'Bookings',
+      value: String(data?.stats?.total_bookings || 0),
+      change: `${data?.stats?.upcoming_bookings || 0} upcoming`,
+      icon: Calendar,
+      color: 'text-mojo bg-mojo/10',
+    },
+    {
+      label: 'Reviews Sent',
+      value: String(data?.stats?.total_reviews || 0),
+      change: `${data?.stats?.completed_reviews || 0} completed`,
+      icon: Star,
+      color: 'text-yellow-500 bg-yellow-50',
+    },
+    {
+      label: 'Conversion',
+      value: `${data?.stats?.conversion_rate || 0}%`,
+      change: `${data?.stats?.total_leads || 0} total leads`,
+      icon: TrendingUp,
+      color: 'text-accent bg-accent/10',
+    },
+  ];
+
+  const recentLeads = (data?.leads || []).slice(0, 4);
+  const slug = (data?.tradie?.slug as string) || '';
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground">Welcome back!</h1>
+        <h1 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground">
+          Welcome back{data?.tradie?.owner_name ? `, ${(data.tradie.owner_name as string).split(' ')[0]}` : ''}!
+        </h1>
         <p className="text-muted">Here&apos;s what&apos;s happening with your business.</p>
       </div>
 
@@ -57,27 +82,39 @@ export default function DashboardOverview() {
             <a href="/dashboard/leads" className="text-sm text-primary hover:underline">View all</a>
           </div>
           <div className="divide-y divide-border">
-            {recentLeads.map((lead) => (
-              <div key={lead.id} className="p-4 flex items-center justify-between hover:bg-background/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {lead.name.split(' ').map(n => n[0]).join('')}
+            {recentLeads.length > 0 ? recentLeads.map((lead) => {
+              const name = lead.customer_name as string;
+              const phone = lead.customer_phone as string;
+              const service = lead.service_needed as string;
+              const urgency = (lead.urgency as string) || 'medium';
+              const createdAt = lead.created_at as string;
+              const timeAgo = getTimeAgo(createdAt);
+              return (
+                <div key={lead.id as string} className="p-4 flex items-center justify-between hover:bg-background/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                      {name.split(' ').map((n: string) => n[0]).join('')}
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground text-sm">{name}</div>
+                      <div className="text-xs text-muted">{service} • {timeAgo}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-foreground text-sm">{lead.name}</div>
-                    <div className="text-xs text-muted">{lead.service} • {lead.time}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${urgencyColors[urgency] || urgencyColors.medium}`}>
+                      {urgency}
+                    </span>
+                    <a href={`tel:${phone.replace(/\s/g, '')}`} className="p-2 hover:bg-accent/10 rounded-lg text-accent transition-colors">
+                      <Phone className="w-4 h-4" />
+                    </a>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${urgencyColors[lead.urgency]}`}>
-                    {lead.urgency}
-                  </span>
-                  <a href={`tel:${lead.phone}`} className="p-2 hover:bg-accent/10 rounded-lg text-accent transition-colors">
-                    <Phone className="w-4 h-4" />
-                  </a>
-                </div>
+              );
+            }) : (
+              <div className="p-8 text-center text-muted">
+                <p className="text-sm">No leads yet. Share your website to start getting enquiries!</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -86,11 +123,13 @@ export default function DashboardOverview() {
           <div className="bg-surface rounded-2xl border border-border p-5">
             <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
             <div className="space-y-2">
-              <a href="/t/demo" target="_blank">
-                <Button variant="outline" size="sm" className="w-full justify-start gap-2">
-                  <ExternalLink className="w-4 h-4" /> View Your Website
-                </Button>
-              </a>
+              {slug && (
+                <a href={`/t/${slug}`} target="_blank">
+                  <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+                    <ExternalLink className="w-4 h-4" /> View Your Website
+                  </Button>
+                </a>
+              )}
               <a href="/dashboard/reviews">
                 <Button variant="outline" size="sm" className="w-full justify-start gap-2 mt-2">
                   <Star className="w-4 h-4" /> Send Review Request
@@ -116,4 +155,19 @@ export default function DashboardOverview() {
       </div>
     </div>
   );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHrs = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffHrs < 24) return `${diffHrs} hours ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }

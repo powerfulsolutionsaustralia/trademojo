@@ -1,25 +1,77 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, ExternalLink, Globe, Palette, Type, FileText, Copy, CheckCircle } from 'lucide-react';
+import { useDashboard } from '../layout';
+import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
 
 export default function SettingsPage() {
+  const data = useDashboard();
+  const site = data?.site as Record<string, unknown> | null;
+  const slug = (data?.tradie?.slug as string) || '';
+
   const [settings, setSettings] = useState({
-    hero_headline: 'Your Trusted Local Plumber',
-    hero_subheadline: 'Licensed, insured plumber serving Brisbane and surrounding areas. Get a free quote today.',
-    about_text: 'We are a trusted local business providing high-quality plumbing services.',
-    services: 'Emergency Repairs, Installation, Maintenance, Inspections, Renovations',
+    hero_headline: '',
+    hero_subheadline: '',
+    about_text: '',
+    services: '',
     primary_color: '#F97316',
     custom_domain: '',
   });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleSave = () => {
-    // TODO: Save to Supabase
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // Load data from context
+  useEffect(() => {
+    if (site) {
+      setSettings({
+        hero_headline: (site.hero_headline as string) || '',
+        hero_subheadline: (site.hero_subheadline as string) || '',
+        about_text: (site.about_text as string) || '',
+        services: ((site.services_list as string[]) || []).join(', '),
+        primary_color: (site.primary_color as string) || '#F97316',
+        custom_domain: (data?.tradie?.custom_domain as string) || '',
+      });
+    }
+  }, [site, data?.tradie?.custom_domain]);
+
+  const handleSave = async () => {
+    if (!site || !data?.tradie) return;
+    setSaving(true);
+
+    try {
+      const supabase = createClient();
+      const tradieId = data.tradie.id as string;
+
+      // Update tradie_sites
+      await supabase
+        .from('tradie_sites')
+        .update({
+          hero_headline: settings.hero_headline,
+          hero_subheadline: settings.hero_subheadline,
+          about_text: settings.about_text,
+          services_list: settings.services.split(',').map((s) => s.trim()).filter(Boolean),
+          primary_color: settings.primary_color,
+        })
+        .eq('tradie_id', tradieId);
+
+      // Update custom domain if changed
+      if (settings.custom_domain !== (data.tradie.custom_domain || '')) {
+        await supabase
+          .from('tradies')
+          .update({ custom_domain: settings.custom_domain || null })
+          .eq('id', tradieId);
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Save error:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyDns = () => {
@@ -35,11 +87,13 @@ export default function SettingsPage() {
           <h1 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground">Website Settings</h1>
           <p className="text-muted text-sm">Customize your lead-gen website</p>
         </div>
-        <a href="/t/demo" target="_blank">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <ExternalLink className="w-4 h-4" /> Preview Site
-          </Button>
-        </a>
+        {slug && (
+          <a href={`/t/${slug}`} target="_blank">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <ExternalLink className="w-4 h-4" /> Preview Site
+            </Button>
+          </a>
+        )}
       </div>
 
       {/* Content Settings */}
@@ -122,8 +176,8 @@ export default function SettingsPage() {
 
       {/* Save */}
       <div className="flex items-center gap-3">
-        <Button variant="primary" size="lg" className="gap-2" onClick={handleSave}>
-          <Save className="w-5 h-5" /> Save Changes
+        <Button variant="primary" size="lg" className="gap-2" onClick={handleSave} disabled={saving}>
+          <Save className="w-5 h-5" /> {saving ? 'Saving...' : 'Save Changes'}
         </Button>
         {saved && <span className="text-sm text-accent font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Saved!</span>}
       </div>

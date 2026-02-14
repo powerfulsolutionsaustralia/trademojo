@@ -91,6 +91,9 @@ export interface Tradie {
   stripe_subscription_id?: string;
   is_active: boolean;
   is_featured: boolean;
+  is_approved: boolean;
+  approved_at?: string;
+  verification_notes?: Record<string, unknown>;
   custom_domain?: string;
   created_at: string;
   updated_at: string;

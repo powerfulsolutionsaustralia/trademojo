@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { searchPlaces, placeToDirectoryListing } from '@/lib/google-places';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { TradeCategory } from '@/types/database';
 import { TRADE_CATEGORIES, tradeCategoryLabel } from '@/lib/utils';
 
@@ -15,6 +16,44 @@ function getSupabase() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   return createClient(url, key);
+}
+
+// Search registered tradies from Supabase
+async function searchRegisteredTradies(trade: TradeCategory, location: string) {
+  try {
+    const supabase = createAdminClient();
+    let query = supabase
+      .from('tradies')
+      .select('*')
+      .eq('is_active', true)
+      .eq('is_approved', true)
+      .eq('trade_category', trade)
+      .limit(5);
+
+    if (location) {
+      query = query.or(`service_areas.cs.{${location}},postcode.eq.${location}`);
+    }
+
+    const { data } = await query;
+    return (data || []).map((t) => ({
+      id: `tm_${t.id}`,
+      business_name: t.business_name,
+      slug: t.slug,
+      trade_category: t.trade_category,
+      short_description: t.short_description || `${t.business_name} - serving ${(t.service_areas || []).join(', ')}`,
+      average_rating: t.average_rating || 0,
+      review_count: t.review_count || 0,
+      suburb: t.service_areas?.[0] || '',
+      state: t.state,
+      phone: t.phone,
+      website: t.slug ? `https://trademojo.com.au/t/${t.slug}` : '',
+      place_id: `tm_${t.id}`,
+      is_registered: true,
+    }));
+  } catch (err) {
+    console.error('Supabase search error in Mojo:', err);
+    return [];
+  }
 }
 
 // Log a search to Supabase (fire-and-forget)
@@ -92,11 +131,23 @@ export async function POST(request: Request) {
     // If guided flow provided trade + location directly, skip Claude and go straight to search
     if (trade && location) {
       const tradeCategory = trade as TradeCategory;
-      const places = await searchPlaces(tradeCategory, location);
-      const results = places.slice(0, 8).map((p) => placeToDirectoryListing(p, tradeCategory));
+
+      // Search registered tradies first, then Google
+      const [registeredResults, places] = await Promise.all([
+        searchRegisteredTradies(tradeCategory, location),
+        searchPlaces(tradeCategory, location),
+      ]);
+
+      const googleResults = places.slice(0, 8).map((p) => placeToDirectoryListing(p, tradeCategory));
       const tradeLabel = tradeCategoryLabel(tradeCategory);
 
-      const frontendTradies = results.map((t) => ({
+      // Deduplicate: remove Google results that match registered business names
+      const registeredNames = new Set(registeredResults.map((r) => r.business_name.toLowerCase().trim()));
+      const filteredGoogle = googleResults.filter(
+        (g) => !registeredNames.has(g.business_name.toLowerCase().trim())
+      );
+
+      const googleTradies = filteredGoogle.map((t) => ({
         id: t.place_id,
         business_name: t.business_name,
         slug: '',
@@ -109,7 +160,11 @@ export async function POST(request: Request) {
         phone: t.phone,
         website: t.website,
         place_id: t.place_id,
+        is_registered: false,
       }));
+
+      // Registered first, then Google
+      const frontendTradies = [...registeredResults, ...googleTradies];
 
       // Log to Supabase (fire and forget)
       logSearch({
