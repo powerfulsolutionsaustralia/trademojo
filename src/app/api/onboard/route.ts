@@ -76,7 +76,13 @@ export async function POST(request: Request) {
     const userId = authData.user.id;
 
     // 3. Auto-confirm email (bypasses email confirmation requirement)
-    await supabase.rpc('confirm_user_email', { p_user_id: userId });
+    const { error: confirmError } = await supabase.rpc('confirm_user_email', { p_user_id: userId });
+    if (confirmError) {
+      console.error('Email confirm RPC error (non-fatal):', confirmError);
+      // Don't fail the whole signup — the user can still be confirmed manually
+    } else {
+      console.log('Email auto-confirmed for user:', userId);
+    }
 
     // 4. Create tradie + site + listing via SECURITY DEFINER function (bypasses RLS)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('onboard_tradie', {
