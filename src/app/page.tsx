@@ -1,7 +1,7 @@
 import Navbar from '@/components/directory/Navbar';
-import MojoHero from '@/components/mojo/MojoHero';
+import MojoInlineChat from '@/components/mojo/MojoInlineChat';
+import LocationAwareTradeButtons from '@/components/mojo/LocationAwareTradeButtons';
 import Footer from '@/components/directory/Footer';
-import { tradeCategoryLabel, tradeCategoryIcon, TRADE_GROUPS } from '@/lib/utils';
 import { MapPin, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
@@ -29,39 +29,11 @@ export default function Home() {
     <>
       <Navbar />
 
-      {/* Hero — Mojo front and centre */}
-      <MojoHero />
+      {/* Hero — Mojo inline chat */}
+      <MojoInlineChat />
 
-      {/* Browse by Trade — Grouped */}
-      <section className="py-12 px-4 bg-surface" id="trades">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-6">
-            Browse by Trade
-          </h2>
-
-          <div className="space-y-6">
-            {TRADE_GROUPS.map((group) => (
-              <div key={group.label}>
-                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                  {group.label}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {group.trades.map((t) => (
-                    <a
-                      key={t}
-                      href={`/${t}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary hover:shadow-sm transition-all"
-                    >
-                      <span>{tradeCategoryIcon(t)}</span>
-                      <span>{tradeCategoryLabel(t)}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Browse by Trade — Location-aware */}
+      <LocationAwareTradeButtons />
 
       {/* Browse by Location */}
       <section className="py-12 px-4">
