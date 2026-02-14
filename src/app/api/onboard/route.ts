@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { sendWelcomeEmail, sendAdminAlert } from '@/lib/email';
 import { tradeCategoryLabel } from '@/lib/utils';
 import type { TradeCategory } from '@/types/database';
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createAdminClient();
+    const supabase = await createClient();
     const slug = generateSlug(business_name);
     const tradeLabel = tradeCategoryLabel(trade_category as TradeCategory);
 
@@ -46,23 +46,22 @@ export async function POST(request: Request) {
       ? `${slug}-${Date.now().toString(36).slice(-4)}`
       : slug;
 
-    // 2. Create Supabase auth user with their chosen password
-    // (createUser will fail if email already exists — no need to list all users)
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    // 2. Sign up the user (uses anon key — no service role needed)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      email_confirm: true,
-      user_metadata: {
-        business_name,
-        trade_category,
+      options: {
+        data: {
+          business_name,
+          trade_category,
+        },
       },
     });
 
     if (authError || !authData.user) {
-      console.error('Auth user creation error:', authError);
-      // Check if it's a duplicate email error
+      console.error('Auth signup error:', authError);
       const msg = authError?.message?.toLowerCase() || '';
-      if (msg.includes('already') || msg.includes('exists') || msg.includes('duplicate')) {
+      if (msg.includes('already') || msg.includes('exists') || msg.includes('registered')) {
         return NextResponse.json(
           { error: 'An account with this email already exists. Please sign in instead.' },
           { status: 409 }
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    // 3. Create tradie record (minimal — they fill the rest in dashboard)
+    // 3. Create tradie record (user is now authenticated via signUp session)
     const { data: tradie, error: tradieError } = await supabase
       .from('tradies')
       .insert({
@@ -105,9 +104,8 @@ export async function POST(request: Request) {
 
     if (tradieError || !tradie) {
       console.error('Tradie record creation error:', tradieError);
-      await supabase.auth.admin.deleteUser(userId);
       return NextResponse.json(
-        { error: 'Failed to create business profile. Please try again.' },
+        { error: `Failed to create business profile: ${tradieError?.message || 'Unknown error'}` },
         { status: 500 }
       );
     }
