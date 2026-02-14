@@ -1,403 +1,210 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Rocket, CheckCircle, Copy, ExternalLink, Sparkles, Clock, ShieldCheck } from 'lucide-react';
+import { Rocket, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import { TRADE_CATEGORIES, AUSTRALIAN_STATES, tradeCategoryLabel, slugify } from '@/lib/utils';
+import MojoLogo from '@/components/ui/MojoLogo';
+import { TRADE_CATEGORIES, tradeCategoryLabel } from '@/lib/utils';
 import type { TradeCategory } from '@/types/database';
 
-type Step = 1 | 2 | 3 | 4;
-
-interface OnboardData {
-  business_name: string;
-  owner_name: string;
-  phone: string;
-  email: string;
-  trade_category: string;
-  abn: string;
-  state: string;
-  service_areas: string;
-  description: string;
-  services_list: string;
-  hero_headline: string;
-  primary_color: string;
-  about_text: string;
-}
-
-interface Result {
-  slug: string;
-  website_url: string;
-  dashboard_url: string;
-  temp_password: string;
-  is_approved: boolean;
-  message: string;
-}
-
 export default function OnboardPage() {
-  const [step, setStep] = useState<Step>(1);
-  const [data, setData] = useState<OnboardData>({
+  const [data, setData] = useState({
     business_name: '',
-    owner_name: '',
-    phone: '',
     email: '',
+    password: '',
+    phone: '',
     trade_category: '',
-    abn: '',
-    state: '',
-    service_areas: '',
-    description: '',
-    services_list: '',
-    hero_headline: '',
-    primary_color: '#F97316',
-    about_text: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
-  const [copied, setCopied] = useState('');
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setData((prev) => {
-      const updated = { ...prev, [name]: value };
-      // Auto-generate headline when trade or area changes
-      if (name === 'trade_category' || name === 'service_areas') {
-        const trade = name === 'trade_category' ? value : prev.trade_category;
-        const area = name === 'service_areas' ? value.split(',')[0]?.trim() : prev.service_areas.split(',')[0]?.trim();
-        if (trade) {
-          updated.hero_headline = `Your Trusted Local ${tradeCategoryLabel(trade as TradeCategory)}${area ? ` in ${area}` : ''}`;
-        }
-      }
-      return updated;
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     setError('');
+
+    if (data.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          service_areas: data.service_areas.split(',').map((s) => s.trim()).filter(Boolean),
-          services_list: data.services_list.split(',').map((s) => s.trim()).filter(Boolean),
-        }),
+        body: JSON.stringify(data),
       });
 
       const json = await res.json();
       if (json.success) {
-        setResult(json);
+        // Auto-login and redirect to dashboard
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        await supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        });
+        window.location.href = '/dashboard';
       } else {
         setError(json.error || 'Something went wrong. Please try again.');
       }
-    } catch (err) {
-      console.error('Onboard error:', err);
+    } catch {
       setError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(''), 2000);
-  };
-
-  const previewSlug = slugify(`${data.business_name}-${data.service_areas.split(',')[0] || data.state}`);
-
-  // Success screen
-  if (result) {
-    const approved = result.is_approved;
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16">
-        <div className="max-w-lg w-full bg-surface rounded-2xl border border-border shadow-xl p-8 text-center">
-          <div className={`w-20 h-20 rounded-full ${approved ? 'bg-accent/10' : 'bg-mojo/10'} flex items-center justify-center mx-auto mb-6`}>
-            {approved ? (
-              <ShieldCheck className="w-10 h-10 text-accent" />
-            ) : (
-              <Clock className="w-10 h-10 text-mojo" />
-            )}
-          </div>
-          <h1 className="font-[family-name:var(--font-outfit)] text-3xl font-bold text-foreground mb-2">
-            {approved ? 'You\'re Live!' : 'Application Submitted!'}
-          </h1>
-          <p className="text-muted mb-2">{data.business_name} is now on TradeMojo</p>
-          {approved ? (
-            <p className="text-sm text-accent font-medium mb-8">✅ Verified and live in the directory</p>
-          ) : (
-            <div className="bg-mojo/5 border border-mojo/20 rounded-xl p-4 mb-8 text-left">
-              <p className="text-sm text-mojo font-semibold mb-1">⏳ Under Review</p>
-              <p className="text-sm text-muted">Your listing is being verified and will be live shortly. We&apos;ll email you at <strong>{data.email}</strong> once approved.</p>
-            </div>
-          )}
-
-          <div className="space-y-4 text-left">
-            <div className="bg-background rounded-xl border border-border p-4">
-              <label className="text-xs text-muted uppercase tracking-wider font-semibold">Website URL</label>
-              <div className="flex items-center justify-between mt-1">
-                <a href={result.website_url} target="_blank" rel="noopener noreferrer" className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
-                  {result.website_url} <ExternalLink className="w-3 h-3" />
-                </a>
-                <button onClick={() => copyToClipboard(result.website_url, 'url')} className="p-1.5 hover:bg-border rounded-lg cursor-pointer">
-                  {copied === 'url' ? <CheckCircle className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted" />}
-                </button>
-              </div>
-              {!approved && <p className="text-xs text-muted mt-2">Your website is ready — it will appear in the directory once approved.</p>}
-            </div>
-
-            <div className="bg-background rounded-xl border border-border p-4">
-              <label className="text-xs text-muted uppercase tracking-wider font-semibold">Dashboard Login</label>
-              <div className="mt-1 space-y-1">
-                <p className="text-sm text-foreground"><strong>Email:</strong> {data.email}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-foreground"><strong>Password:</strong> {result.temp_password}</p>
-                  <button onClick={() => copyToClipboard(result.temp_password, 'pass')} className="p-1.5 hover:bg-border rounded-lg cursor-pointer">
-                    {copied === 'pass' ? <CheckCircle className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4 text-muted" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted mt-1">Save these credentials — you&apos;ll need them to manage your listing and leads.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-8">
-            <a href={result.website_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button variant="primary" size="md" className="w-full gap-1.5">
-                <ExternalLink className="w-4 h-4" /> View Site
-              </Button>
-            </a>
-            <a href={result.dashboard_url} className="flex-1">
-              <Button variant="outline" size="md" className="w-full gap-1.5">
-                <Rocket className="w-4 h-4" /> Dashboard
-              </Button>
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const isValid = data.business_name && data.email && data.password && data.phone && data.trade_category;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-surface border-b border-border py-4 px-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-white font-bold">T</span>
-            </div>
-            <span className="font-[family-name:var(--font-outfit)] font-bold text-foreground">
-              Trade<span className="text-primary">Mojo</span>
-            </span>
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="max-w-md w-full">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <a href="/" className="inline-flex justify-center mb-4">
+            <MojoLogo size="lg" />
           </a>
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <Sparkles className="w-4 h-4 text-mojo" />
-            60-Second Setup
-          </div>
+          <h1 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground">
+            Get Your Free Website
+          </h1>
+          <p className="text-muted mt-1">Create your account in 30 seconds — customise inside your dashboard.</p>
         </div>
-      </div>
 
-      {/* Progress bar */}
-      <div className="bg-surface border-b border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex-1">
-                <div className={`h-2 rounded-full transition-all ${s <= step ? 'bg-primary' : 'bg-border'}`} />
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-muted">
-            <span className={step >= 1 ? 'text-primary font-medium' : ''}>Business</span>
-            <span className={step >= 2 ? 'text-primary font-medium' : ''}>Location</span>
-            <span className={step >= 3 ? 'text-primary font-medium' : ''}>Customize</span>
-            <span className={step >= 4 ? 'text-primary font-medium' : ''}>Launch</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Form */}
-      <div className="max-w-2xl mx-auto py-8 px-4">
-        {/* Step 1: Business Details */}
-        {step === 1 && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-1">Business Details</h2>
-              <p className="text-muted">Basic info about the trade business</p>
-            </div>
-
+        {/* Signup Form */}
+        <div className="bg-surface rounded-2xl border border-border shadow-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">Business Name *</label>
-              <input type="text" name="business_name" value={data.business_name} onChange={handleChange} placeholder="e.g. Joe's Plumbing" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Owner Name *</label>
-                <input type="text" name="owner_name" value={data.owner_name} onChange={handleChange} placeholder="Joe Smith" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Phone *</label>
-                <input type="tel" name="phone" value={data.phone} onChange={handleChange} placeholder="0400 000 000" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Email *</label>
-                <input type="email" name="email" value={data.email} onChange={handleChange} placeholder="joe@email.com" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Trade *</label>
-                <select name="trade_category" value={data.trade_category} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                  <option value="">Select trade...</option>
-                  {TRADE_CATEGORIES.map((t) => <option key={t} value={t}>{tradeCategoryLabel(t)}</option>)}
-                </select>
-              </div>
+              <input
+                type="text"
+                name="business_name"
+                value={data.business_name}
+                onChange={handleChange}
+                placeholder="e.g. Joe's Plumbing"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">ABN <span className="text-xs text-muted font-normal">(optional)</span></label>
-              <input type="text" name="abn" value={data.abn} onChange={handleChange} placeholder="XX XXX XXX XXX" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-            </div>
-
-            <Button variant="primary" size="lg" className="w-full gap-2" onClick={() => setStep(2)} disabled={!data.business_name || !data.owner_name || !data.phone || !data.email || !data.trade_category}>
-              Next: Service Area <ArrowRight className="w-5 h-5" />
-            </Button>
-          </div>
-        )}
-
-        {/* Step 2: Service Area */}
-        {step === 2 && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-1">Service Area</h2>
-              <p className="text-muted">Where does this business operate?</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">State *</label>
-              <select name="state" value={data.state} onChange={handleChange} className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
-                <option value="">Select state...</option>
-                {AUSTRALIAN_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Trade *</label>
+              <select
+                name="trade_category"
+                value={data.trade_category}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="">Select your trade...</option>
+                {TRADE_CATEGORIES.map((t) => (
+                  <option key={t} value={t}>{tradeCategoryLabel(t)}</option>
+                ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Suburbs / Cities <span className="text-xs text-muted font-normal">(comma separated)</span></label>
-              <input type="text" name="service_areas" value={data.service_areas} onChange={handleChange} placeholder="e.g. Brisbane, Gold Coast, Sunshine Coast" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Phone *</label>
+              <input
+                type="tel"
+                name="phone"
+                value={data.phone}
+                onChange={handleChange}
+                placeholder="0400 000 000"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Brief Description</label>
-              <textarea name="description" value={data.description} onChange={handleChange} rows={3} placeholder="Quick description of the business and what they do..." className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none" />
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="gap-2" onClick={() => setStep(1)}>
-                <ArrowLeft className="w-5 h-5" /> Back
-              </Button>
-              <Button variant="primary" size="lg" className="flex-1 gap-2" onClick={() => setStep(3)} disabled={!data.state}>
-                Next: Customize <ArrowRight className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Quick Customize */}
-        {step === 3 && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-1">Quick Customization</h2>
-              <p className="text-muted">Fine-tune the website (all optional - we auto-generate everything)</p>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Email *</label>
+              <input
+                type="email"
+                name="email"
+                value={data.email}
+                onChange={handleChange}
+                placeholder="you@business.com"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Hero Headline</label>
-              <input type="text" name="hero_headline" value={data.hero_headline} onChange={handleChange} placeholder="Auto-generated from trade + area" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Brand Color</label>
-              <div className="flex items-center gap-3">
-                <input type="color" name="primary_color" value={data.primary_color} onChange={handleChange} className="w-12 h-12 rounded-xl border border-border cursor-pointer" />
-                <input type="text" value={data.primary_color} onChange={handleChange} name="primary_color" className="flex-1 px-4 py-3 rounded-xl border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Services <span className="text-xs text-muted font-normal">(comma separated)</span></label>
-              <input type="text" name="services_list" value={data.services_list} onChange={handleChange} placeholder="e.g. Emergency Repairs, Installation, Maintenance" className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">About Text</label>
-              <textarea name="about_text" value={data.about_text} onChange={handleChange} rows={3} placeholder="Auto-generated from business description..." className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none" />
-            </div>
-
-            <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="gap-2" onClick={() => setStep(2)}>
-                <ArrowLeft className="w-5 h-5" /> Back
-              </Button>
-              <Button variant="primary" size="lg" className="flex-1 gap-2" onClick={() => setStep(4)}>
-                Review &amp; Launch <ArrowRight className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Review & Launch */}
-        {step === 4 && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-1">Review &amp; Launch</h2>
-              <p className="text-muted">Confirm everything looks good, then go live!</p>
-            </div>
-
-            <div className="bg-surface rounded-2xl border border-border p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-muted">Business:</span> <strong>{data.business_name}</strong></div>
-                <div><span className="text-muted">Owner:</span> <strong>{data.owner_name}</strong></div>
-                <div><span className="text-muted">Phone:</span> <strong>{data.phone}</strong></div>
-                <div><span className="text-muted">Email:</span> <strong>{data.email}</strong></div>
-                <div><span className="text-muted">Trade:</span> <strong>{data.trade_category ? tradeCategoryLabel(data.trade_category as TradeCategory) : '-'}</strong></div>
-                <div><span className="text-muted">State:</span> <strong>{data.state}</strong></div>
-              </div>
-              {data.service_areas && (
-                <div className="text-sm"><span className="text-muted">Service Areas:</span> <strong>{data.service_areas}</strong></div>
-              )}
-              <div className="border-t border-border pt-4">
-                <div className="text-sm"><span className="text-muted">Website URL:</span></div>
-                <p className="text-primary font-semibold">trademojo.com.au/t/{previewSlug}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded" style={{ backgroundColor: data.primary_color }} />
-                <span className="text-sm text-muted">Brand color: {data.primary_color}</span>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Password *</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={data.password}
+                  onChange={handleChange}
+                  placeholder="Min 6 characters"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
-                {error}
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
-            <div className="flex gap-3">
-              <Button variant="outline" size="lg" className="gap-2" onClick={() => setStep(3)}>
-                <ArrowLeft className="w-5 h-5" /> Back
-              </Button>
-              <Button variant="accent" size="lg" className="flex-1 gap-2" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <><span className="animate-spin mr-1">⏳</span> Creating your website...</>
-                ) : (
-                  <><Rocket className="w-5 h-5" /> Launch Website</>
-                )}
-              </Button>
+            <Button
+              type="submit"
+              variant="accent"
+              size="lg"
+              className="w-full gap-2 mt-2"
+              disabled={!isValid || isSubmitting}
+            >
+              {isSubmitting ? (
+                <><span className="animate-spin mr-1">⏳</span> Creating your account...</>
+              ) : (
+                <><Rocket className="w-5 h-5" /> Create Free Account</>
+              )}
+            </Button>
+          </form>
+
+          {/* What you get */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <p className="text-xs text-muted text-center mb-3 font-medium uppercase tracking-wider">What&apos;s included — free</p>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted">
+              <div className="flex items-center gap-1.5">
+                <span className="text-accent">✓</span> 4-page professional website
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-accent">✓</span> Lead capture form
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-accent">✓</span> Google review system
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-accent">✓</span> Business dashboard
+              </div>
             </div>
           </div>
-        )}
+        </div>
+
+        <p className="text-center text-sm text-muted mt-6">
+          Already have an account?{' '}
+          <a href="/login" className="text-primary font-medium hover:underline">
+            Sign in
+          </a>
+        </p>
       </div>
     </div>
   );

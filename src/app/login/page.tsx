@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
+import MojoLogo from '@/components/ui/MojoLogo';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -39,13 +40,8 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <a href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-white font-bold text-xl">T</span>
-            </div>
-            <span className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground">
-              Trade<span className="text-primary">Mojo</span>
-            </span>
+          <a href="/" className="inline-flex justify-center">
+            <MojoLogo size="lg" />
           </a>
           <p className="text-muted mt-2">Sign in to your dashboard</p>
         </div>
@@ -95,7 +91,7 @@ export default function LoginPage() {
         <p className="text-center text-sm text-muted mt-6">
           Don&apos;t have an account?{' '}
           <a href="/onboard" className="text-primary font-medium hover:underline">
-            List your business
+            Get your free website
           </a>
         </p>
       </div>

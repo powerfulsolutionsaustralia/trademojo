@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Get the tradie info for email notification
     const { data: tradie, error: tradieError } = await supabase
       .from('tradies')
-      .select('email, business_name, phone, plan_tier')
+      .select('email, business_name, phone, plan_tier, has_payment_method')
       .eq('id', tradie_id)
       .single();
 
@@ -77,15 +77,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // TODO: If PAYG plan, create billing event
-    // if (tradie?.plan_tier === 'payg') {
-    //   await supabase.from('billing_events').insert({
-    //     tradie_id,
-    //     event_type: 'lead_charge',
-    //     amount_cents: 2500,
-    //     lead_id: lead.id,
-    //   });
-    // }
+    // Create billing event for the lead ($10 per lead)
+    if (tradie?.has_payment_method) {
+      await supabase.from('billing_events').insert({
+        tradie_id,
+        event_type: 'lead_charge',
+        amount_cents: 1000,
+        description: `Lead from ${customer_name} for ${service_needed}`,
+        lead_id: lead.id,
+        status: 'pending',
+      }).then(({ error: billingError }) => {
+        if (billingError) console.error('Billing event insert error:', billingError);
+      });
+    }
 
     console.log('New lead saved:', {
       lead_id: lead.id,

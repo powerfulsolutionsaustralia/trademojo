@@ -224,6 +224,69 @@ export async function sendNewLeadNotification(
 }
 
 /**
+ * Send review feedback notification to tradie
+ */
+export async function sendReviewFeedbackEmail(
+  to: string,
+  data: {
+    businessName: string;
+    customerName: string;
+    rating: number;
+    feedback: string;
+  }
+) {
+  const stars = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating);
+
+  try {
+    const { data: emailData, error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `Private Feedback: ${data.customerName} left a ${data.rating}-star review`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="font-size: 24px; color: #1E293B; margin: 0;">
+              Private Feedback for <span style="color: #F97316;">${data.businessName}</span>
+            </h1>
+          </div>
+
+          <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 12px; padding: 20px; margin: 16px 0;">
+            <p style="font-size: 24px; text-align: center; margin: 0 0 8px;">${stars}</p>
+            <p style="font-size: 15px; color: #334155; margin: 6px 0;"><strong>Customer:</strong> ${data.customerName}</p>
+            <p style="font-size: 15px; color: #334155; margin: 6px 0;"><strong>Rating:</strong> ${data.rating} out of 5</p>
+            <p style="font-size: 15px; color: #334155; margin: 12px 0 0;"><strong>Feedback:</strong></p>
+            <p style="font-size: 15px; color: #334155; line-height: 1.6; margin: 4px 0;">${data.feedback}</p>
+          </div>
+
+          <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 16px 0;">
+            This feedback was submitted privately through your TradeMojo review page. The customer rated below 5 stars, so they were given the option to send feedback directly to you instead of posting publicly.
+          </p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://trademojo.com.au/dashboard/reviews" style="display: inline-block; background: #8B5CF6; color: white; font-weight: 700; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-size: 16px;">
+              View in Dashboard
+            </a>
+          </div>
+
+          <p style="font-size: 14px; color: #94A3B8; margin-top: 32px; text-align: center;">
+            — TradeMojo
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error('Review feedback email error:', error);
+      return { success: false, error };
+    }
+    return { success: true, id: emailData?.id };
+  } catch (error) {
+    console.error('Review feedback email failed:', error);
+    return { success: false, error };
+  }
+}
+
+/**
  * Send admin alert (new signups, flagged businesses, etc.)
  */
 export async function sendAdminAlert(subject: string, body: string) {

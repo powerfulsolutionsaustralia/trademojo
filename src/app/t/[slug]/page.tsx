@@ -1,192 +1,24 @@
-import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getTradie } from '@/lib/tradie';
 import LeadForm from '@/components/tradie-site/LeadForm';
 import { Shield, Star, Clock, MapPin, Phone, Award, ArrowRight, Wrench, Users, ThumbsUp } from 'lucide-react';
-import type { Tradie, TradieSite, Testimonial, TradeCategory } from '@/types/database';
+import type { TradeCategory } from '@/types/database';
 import { tradeCategoryLabel } from '@/lib/utils';
-import { generateTradieLd, generateTradieMetadata } from '@/lib/seo';
+import { generateTradieLd } from '@/lib/seo';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-/**
- * Fetch tradie + site from Supabase by slug.
- * Returns null if not found (will fall back to demo data or 404).
- */
-async function getTradie(slug: string): Promise<{ tradie: Tradie; site: TradieSite } | null> {
-  try {
-    const supabase = await createClient();
-
-    const { data: tradie, error } = await supabase
-      .from('tradies')
-      .select('*')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .single();
-
-    if (error || !tradie) return null;
-
-    const { data: site } = await supabase
-      .from('tradie_sites')
-      .select('*')
-      .eq('tradie_id', tradie.id)
-      .single();
-
-    // Build default site if no site record exists
-    const tradeLabel = tradeCategoryLabel(tradie.trade_category as TradeCategory);
-    const areas = (tradie.service_areas as string[]) || [];
-    const defaultSite: TradieSite = {
-      id: '',
-      tradie_id: tradie.id,
-      primary_color: '#F97316',
-      secondary_color: '#1E293B',
-      hero_headline: `${areas[0] || tradie.state}'s Trusted ${tradeLabel}`,
-      hero_subheadline: `Licensed, insured, and ready to help. Get a free, no-obligation quote from ${tradie.business_name} today.`,
-      cta_text: 'Get a Free Quote',
-      services_list: [
-        'Emergency Repairs',
-        `${tradeLabel} Installation`,
-        'Maintenance & Servicing',
-        'Inspections & Reports',
-        'Renovations & Upgrades',
-      ],
-      about_text: tradie.description || `${tradie.business_name} provides quality ${tradeLabel.toLowerCase()} services.`,
-      testimonials: [],
-      show_booking: true,
-      show_reviews: true,
-      show_gallery: true,
-      meta_title: `${tradie.business_name} - ${tradeLabel} in ${areas[0] || tradie.state}`,
-      meta_description: tradie.short_description || `Trusted ${tradeLabel.toLowerCase()} services.`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const mergedSite = site
-      ? {
-          ...defaultSite,
-          ...site,
-          services_list: site.services_list?.length > 0 ? site.services_list : defaultSite.services_list,
-          testimonials: site.testimonials || [],
-        }
-      : defaultSite;
-
-    return {
-      tradie: tradie as Tradie,
-      site: mergedSite,
-    };
-  } catch (err) {
-    console.error('Error fetching tradie:', err);
-    return null;
-  }
-}
-
-/**
- * Demo data fallback when no DB record exists.
- */
-function getDemoTradie(slug: string): { tradie: Tradie; site: TradieSite } {
-  const words = slug.split('-');
-  const name = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-
-  const tradeMap: Record<string, string> = {
-    plumb: 'plumber', plumbing: 'plumber', electric: 'electrician', electrical: 'electrician',
-    build: 'builder', building: 'builder', paint: 'painter', painting: 'painter',
-    roof: 'roofer', roofing: 'roofer', landscape: 'landscaper', landscaping: 'landscaper',
-    tile: 'tiler', tiling: 'tiler', concrete: 'concreter', fence: 'fencer', fencing: 'fencer',
-    solar: 'solar', clean: 'cleaning', pest: 'pest_control', lock: 'locksmith',
-    pool: 'pool_builder', handy: 'handyman', air: 'air_conditioning', aircon: 'air_conditioning',
-    carpenter: 'carpenter', carpentry: 'carpenter',
-  };
-
-  let detectedTrade: TradeCategory = 'handyman';
-  for (const [keyword, trade] of Object.entries(tradeMap)) {
-    if (slug.includes(keyword)) {
-      detectedTrade = trade as TradeCategory;
-      break;
-    }
-  }
-
-  const tradie: Tradie = {
-    id: 'demo-123',
-    user_id: 'demo-user',
-    business_name: name,
-    slug,
-    owner_name: 'Demo Owner',
-    email: 'hello@trademojo.com.au',
-    phone: '0400 000 000',
-    trade_category: detectedTrade,
-    description: `${name} provides reliable, high-quality ${tradeCategoryLabel(detectedTrade).toLowerCase()} services across the local area. We pride ourselves on honest pricing, quality workmanship, and turning up on time — every time. Fully licensed and insured with over a decade of experience.`,
-    short_description: `Trusted local ${tradeCategoryLabel(detectedTrade).toLowerCase()} services.`,
-    service_areas: ['Brisbane', 'Gold Coast', 'Sunshine Coast'],
-    state: 'QLD',
-    postcode: '4000',
-    average_rating: 4.9,
-    review_count: 47,
-    years_experience: 12,
-    plan_tier: 'pro',
-    is_active: true,
-    is_featured: false,
-    is_approved: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  const tradeLabel = tradeCategoryLabel(tradie.trade_category as Tradie['trade_category']);
-
-  const site: TradieSite = {
-    id: 'site-123',
-    tradie_id: 'demo-123',
-    primary_color: '#F97316',
-    secondary_color: '#1E293B',
-    hero_headline: `${tradie.service_areas[0]}'s Trusted ${tradeLabel}`,
-    hero_subheadline: `Licensed, insured, and backed by ${tradie.review_count}+ five-star reviews. Get a free, no-obligation quote today.`,
-    cta_text: 'Get a Free Quote',
-    services_list: [
-      'Emergency Repairs',
-      `${tradeLabel} Installation`,
-      'Maintenance & Servicing',
-      'Inspections & Reports',
-      'Renovations & Upgrades',
-      'New Builds & Fit-Outs',
-    ],
-    about_text: tradie.description,
-    testimonials: [
-      { name: 'Sarah M.', text: 'Showed up on time, got the job done right, and cleaned up afterwards. Exactly what you want. Will definitely use again.', rating: 5, date: '2 weeks ago' },
-      { name: 'James T.', text: 'Called them for an emergency and they were here within the hour. Professional, honest pricing, and great work. Lifesavers.', rating: 5, date: '1 month ago' },
-      { name: 'Lisa K.', text: 'Best value for money. Quoted fair, did quality work, and even gave us tips on maintenance. Highly recommend.', rating: 5, date: '3 weeks ago' },
-    ] as Testimonial[],
-    show_booking: true,
-    show_reviews: true,
-    show_gallery: true,
-    meta_title: `${tradie.business_name} - ${tradeLabel} in ${tradie.service_areas[0]}`,
-    meta_description: tradie.short_description,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  return { tradie, site };
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export default async function TradieSiteHomePage({ params }: Props) {
   const { slug } = await params;
-  const dbResult = await getTradie(slug);
-  const { tradie } = dbResult || getDemoTradie(slug);
-  return generateTradieMetadata(tradie);
-}
+  const result = await getTradie(slug);
+  if (!result) notFound();
 
-export default async function TradieSitePage({ params }: Props) {
-  const { slug } = await params;
-
-  // Try fetching from Supabase first, fall back to demo data
-  const dbResult = await getTradie(slug);
-  const { tradie, site } = dbResult || getDemoTradie(slug);
-
-  if (!tradie) notFound();
-
+  const { tradie, site } = result;
   const jsonLd = generateTradieLd(tradie);
   const color = site?.primary_color || '#F97316';
-  const tradeLabel = tradeCategoryLabel(tradie.trade_category as Tradie['trade_category']);
+  const tradeLabel = tradeCategoryLabel(tradie.trade_category as TradeCategory);
   const serviceAreas = tradie.service_areas || [];
 
   return (
@@ -195,42 +27,6 @@ export default async function TradieSitePage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      {/* Sticky Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-black/10 backdrop-blur-xl" style={{ backgroundColor: `${color}f5` }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3">
-              {tradie.logo_url ? (
-                <img src={tradie.logo_url} alt={tradie.business_name} className="w-8 h-8 rounded-lg object-cover" />
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">{tradie.business_name.charAt(0)}</span>
-                </div>
-              )}
-              <span className="font-[family-name:var(--font-outfit)] text-white font-bold text-base truncate max-w-[200px] sm:max-w-none">
-                {tradie.business_name}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={`tel:${tradie.phone}`}
-                className="hidden sm:inline-flex items-center gap-1.5 text-white/90 text-sm font-medium hover:text-white transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                {tradie.phone}
-              </a>
-              <a
-                href="#quote"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-sm font-bold transition-all hover:shadow-lg"
-                style={{ color }}
-              >
-                Get Quote
-              </a>
-            </div>
-          </div>
-        </div>
-      </nav>
 
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 px-4">
@@ -384,7 +180,7 @@ export default async function TradieSitePage({ params }: Props) {
         </div>
       </section>
 
-      {/* Services */}
+      {/* Services Preview */}
       {site.services_list && site.services_list.length > 0 && (
         <section className="py-16 px-4">
           <div className="max-w-5xl mx-auto">
@@ -412,112 +208,38 @@ export default async function TradieSitePage({ params }: Props) {
                 </div>
               ))}
             </div>
+            <div className="text-center mt-8">
+              <a href={`/t/${tradie.slug}/services`} className="text-sm font-medium hover:underline" style={{ color }}>
+                View all services →
+              </a>
+            </div>
           </div>
         </section>
       )}
 
-      {/* About & Stats */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-            <div className="lg:col-span-3">
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl font-bold text-foreground mb-4">
-                About {tradie.business_name}
-              </h2>
-              <p className="text-muted leading-relaxed text-base">{site.about_text || tradie.description}</p>
-              {serviceAreas.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {serviceAreas.map((area) => (
-                    <span key={area} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-medium text-foreground">
-                      <MapPin className="w-3 h-3 text-muted" />
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {tradie.abn && (
-                <p className="text-xs text-muted mt-4">ABN: {tradie.abn}</p>
-              )}
-              {tradie.license_number && (
-                <p className="text-xs text-muted mt-1">License: {tradie.license_number}</p>
-              )}
-            </div>
-
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="font-semibold text-foreground mb-6 text-center text-sm uppercase tracking-wider">At a Glance</h3>
-                <div className="space-y-6">
-                  {tradie.years_experience && tradie.years_experience > 0 && (
-                    <>
-                      <div className="text-center">
-                        <div className="text-4xl font-bold" style={{ color }}>{tradie.years_experience}+</div>
-                        <div className="text-xs text-muted font-medium mt-1">Years of Experience</div>
-                      </div>
-                      <div className="border-t border-gray-100" />
-                    </>
-                  )}
-                  {tradie.review_count && tradie.review_count > 0 && (
-                    <>
-                      <div className="text-center">
-                        <div className="text-4xl font-bold" style={{ color }}>{tradie.review_count}</div>
-                        <div className="text-xs text-muted font-medium mt-1">Happy Customers</div>
-                      </div>
-                      <div className="border-t border-gray-100" />
-                    </>
-                  )}
-                  {tradie.average_rating && tradie.average_rating > 0 && (
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-4xl font-bold" style={{ color }}>{tradie.average_rating}</span>
-                        <Star className="w-7 h-7 fill-yellow-400 text-yellow-400" />
-                      </div>
-                      <div className="text-xs text-muted font-medium mt-1">Average Rating</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+      {/* Google Reviews CTA */}
+      <section className="py-12 px-4 bg-yellow-50 border-y border-yellow-100">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-1 mb-3">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Star key={n} className="w-6 h-6 fill-yellow-400 text-yellow-400" />
+            ))}
           </div>
+          <h2 className="font-[family-name:var(--font-outfit)] text-xl font-bold text-foreground mb-2">
+            Had a great experience?
+          </h2>
+          <p className="text-muted text-sm mb-4">
+            Your review helps us grow and helps others find great tradies.
+          </p>
+          <a
+            href={`/t/${tradie.slug}/review`}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+            style={{ backgroundColor: color }}
+          >
+            <Star className="w-4 h-4" /> Leave a Review
+          </a>
         </div>
       </section>
-
-      {/* Testimonials */}
-      {site.show_reviews && site.testimonials && site.testimonials.length > 0 && (
-        <section className="py-16 px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="font-[family-name:var(--font-outfit)] text-2xl md:text-3xl font-bold text-foreground mb-2">
-                What Our Customers Say
-              </h2>
-              <p className="text-muted text-sm">Real feedback from real customers</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {(site.testimonials as Testimonial[]).map((t, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {Array.from({ length: t.rating }).map((_, j) => (
-                      <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-foreground text-sm leading-relaxed mb-5">&ldquo;{t.text}&rdquo;</p>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
-                      style={{ backgroundColor: color }}
-                    >
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold text-foreground block">{t.name}</span>
-                      {t.date && <span className="text-xs text-muted">{t.date}</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Final CTA */}
       <section className="py-20 px-4 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
@@ -551,35 +273,6 @@ export default async function TradieSitePage({ params }: Props) {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 text-white py-10 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-center md:text-left">
-              <p className="font-[family-name:var(--font-outfit)] font-bold text-lg">{tradie.business_name}</p>
-              <p className="text-sm text-white/40 mt-1">
-                {tradeLabel}{serviceAreas.length > 0 ? ` · ${serviceAreas.join(' · ')}` : ''}{tradie.state ? `, ${tradie.state}` : ''}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href={`tel:${tradie.phone}`}
-                className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
-              >
-                <Phone className="w-4 h-4" /> {tradie.phone}
-              </a>
-              <span className="text-white/20">|</span>
-              <div className="flex items-center gap-2 text-sm text-white/40">
-                <span>Powered by</span>
-                <a href="https://trademojo.com.au" className="font-semibold hover:text-white transition-colors" style={{ color }}>
-                  TradeMojo
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </>
   );
 }

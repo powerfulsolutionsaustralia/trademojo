@@ -216,7 +216,15 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
               Call Now
             </a>
           )}
-          {listing.website && (
+          {isRegistered && listing.slug ? (
+            <a
+              href={`/t/${listing.slug}`}
+              className="inline-flex items-center gap-2 py-2.5 px-4 border border-border rounded-xl text-sm font-medium text-foreground hover:border-mojo hover:text-mojo transition-colors"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Visit Website
+            </a>
+          ) : listing.website ? (
             <a
               href={listing.website}
               target="_blank"
@@ -224,9 +232,9 @@ function ListingCard({ listing, rank }: { listing: Listing; rank: number }) {
               className="inline-flex items-center gap-2 py-2.5 px-4 border border-border rounded-xl text-sm font-medium text-foreground hover:border-primary hover:text-primary transition-colors"
             >
               <Globe className="w-3.5 h-3.5" />
-              {isRegistered && listing.slug ? 'View Profile' : 'Visit Website'}
+              Visit Website
             </a>
-          )}
+          ) : null}
           {!isRegistered && (
             <a
               href={`https://www.google.com/maps/place/?q=place_id:${listing.place_id}`}

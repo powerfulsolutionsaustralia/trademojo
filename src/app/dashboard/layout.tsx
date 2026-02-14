@@ -3,7 +3,9 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { LayoutDashboard, Users, Star, Settings, Sparkles, LogOut, Menu, X, Globe, Loader2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Star, Settings, Sparkles, LogOut, Menu, X, Globe, Loader2, ShieldCheck, CreditCard, Megaphone } from 'lucide-react';
+import MojoLogo from '@/components/ui/MojoLogo';
+import ProfileSetupBanner from '@/components/dashboard/ProfileSetupBanner';
 
 interface DashboardData {
   user: { id: string; email: string };
@@ -31,6 +33,8 @@ const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/leads', label: 'Leads', icon: Users },
   { href: '/dashboard/reviews', label: 'Reviews', icon: Star },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
+  { href: '/dashboard/marketing', label: 'Marketing', icon: Megaphone },
   { href: '/dashboard/settings', label: 'Website Settings', icon: Settings },
   { href: '/dashboard/mojo', label: 'Ask Mojo', icon: Sparkles },
 ];
@@ -69,17 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const businessName = (data?.tradie?.business_name as string) || 'Your Business';
   const slug = (data?.tradie?.slug as string) || '';
-  const planTier = (data?.tradie?.plan_tier as string) || 'free';
   const isApproved = data?.tradie?.is_approved as boolean;
-
-  const planLabels: Record<string, { label: string; color: string }> = {
-    free: { label: 'Free Plan', color: 'bg-gray-100 text-gray-600' },
-    payg: { label: 'Pay-As-You-Go', color: 'bg-blue-100 text-blue-700' },
-    pro: { label: 'Pro Plan', color: 'bg-mojo/10 text-mojo' },
-    premium: { label: 'Premium', color: 'bg-primary/10 text-primary' },
-  };
-
-  const plan = planLabels[planTier] || planLabels.free;
 
   if (loading) {
     return (
@@ -101,13 +95,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Logo */}
             <div className="p-5 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <a href="/" className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                    <span className="text-white font-bold">T</span>
-                  </div>
-                  <span className="font-[family-name:var(--font-outfit)] font-bold">
-                    Trade<span className="text-primary">Mojo</span>
-                  </span>
+                <a href="/">
+                  <MojoLogo size="sm" className="[&_span]:text-white [&_span_.text-primary]:text-primary" />
                 </a>
                 <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/60 hover:text-white cursor-pointer">
                   <X className="w-5 h-5" />
@@ -143,21 +132,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {item.label === 'Ask Mojo' && (
                       <span className="ml-auto text-[10px] bg-mojo/20 text-mojo px-1.5 py-0.5 rounded-full font-semibold">AI</span>
                     )}
+                    {item.label === 'Marketing' && (
+                      <span className="ml-auto text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-semibold">New</span>
+                    )}
                   </a>
                 );
               })}
             </nav>
-
-            {/* Upgrade CTA in sidebar */}
-            {planTier === 'free' && (
-              <div className="mx-3 mb-3 bg-gradient-to-br from-mojo/20 to-primary/20 rounded-xl p-4">
-                <p className="text-xs font-bold text-white mb-1">Upgrade to Pro</p>
-                <p className="text-[11px] text-white/60 mb-3">Get more leads and premium features.</p>
-                <button className="w-full text-xs font-bold bg-white/20 hover:bg-white/30 text-white py-2 rounded-lg transition-colors cursor-pointer">
-                  View Plans
-                </button>
-              </div>
-            )}
 
             {/* Footer */}
             <div className="p-3 border-t border-white/10 space-y-1">
@@ -194,7 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.color}`}>{plan.label}</span>
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-accent/10 text-accent">Free Website</span>
             </div>
           </header>
 
@@ -211,6 +192,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Page Content */}
           <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
+            {/* Profile setup banner */}
+            {data?.tradie && (
+              <ProfileSetupBanner tradie={data.tradie} site={data.site} />
+            )}
             {children}
           </main>
         </div>

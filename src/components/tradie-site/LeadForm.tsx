@@ -39,6 +39,8 @@ export default function LeadForm({ tradieId, tradieName, services, primaryColor 
   });
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [honeypot, setHoneypot] = useState('');
+  const [loadedAt] = useState(() => Date.now());
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -50,6 +52,18 @@ export default function LeadForm({ tradieId, tradieName, services, primaryColor 
     e.preventDefault();
     setStatus('submitting');
     setErrorMessage('');
+
+    // Bot protection: honeypot check
+    if (honeypot) {
+      setStatus('success'); // Fake success for bots
+      return;
+    }
+
+    // Bot protection: time check (must take at least 3 seconds)
+    if (Date.now() - loadedAt < 3000) {
+      setStatus('success'); // Fake success for bots
+      return;
+    }
 
     try {
       const res = await fetch('/api/leads', {
@@ -92,6 +106,17 @@ export default function LeadForm({ tradieId, tradieName, services, primaryColor 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Honeypot field - hidden from humans */}
+      <div className="absolute -left-[9999px]" aria-hidden="true">
+        <input
+          type="text"
+          name="website_url"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       {/* Name */}
       <div>
         <label className="block text-sm font-semibold text-foreground mb-1.5">
