@@ -35,19 +35,19 @@ export async function POST(request: Request) {
     const slug = generateSlug(business_name);
     const tradeLabel = tradeCategoryLabel(trade_category as TradeCategory);
 
-    // 1. Check for duplicate email
-    const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const emailExists = existingUser?.users?.some(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-    if (emailExists) {
-      return NextResponse.json(
-        { error: 'An account with this email already exists. Please sign in instead.' },
-        { status: 409 }
-      );
-    }
+    // 1. Check for duplicate slug and make unique if needed
+    const { data: existingSlug } = await supabase
+      .from('tradies')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    const finalSlug = existingSlug
+      ? `${slug}-${Date.now().toString(36).slice(-4)}`
+      : slug;
 
     // 2. Create Supabase auth user with their chosen password
+    // (createUser will fail if email already exists — no need to list all users)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -60,8 +60,16 @@ export async function POST(request: Request) {
 
     if (authError || !authData.user) {
       console.error('Auth user creation error:', authError);
+      // Check if it's a duplicate email error
+      const msg = authError?.message?.toLowerCase() || '';
+      if (msg.includes('already') || msg.includes('exists') || msg.includes('duplicate')) {
+        return NextResponse.json(
+          { error: 'An account with this email already exists. Please sign in instead.' },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: 'Failed to create account. Please try again.' },
+        { error: authError?.message || 'Failed to create account. Please try again.' },
         { status: 500 }
       );
     }
@@ -74,7 +82,7 @@ export async function POST(request: Request) {
       .insert({
         user_id: userId,
         business_name,
-        slug,
+        slug: finalSlug,
         owner_name: '',
         email,
         phone,
@@ -144,7 +152,7 @@ export async function POST(request: Request) {
     }
 
     // 6. Send welcome email (non-blocking)
-    sendWelcomeEmail(email, business_name, password, slug).catch((err) =>
+    sendWelcomeEmail(email, business_name, password, finalSlug).catch((err) =>
       console.error('Welcome email error:', err)
     );
 
@@ -156,21 +164,22 @@ export async function POST(request: Request) {
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Phone:</strong> ${phone}</p>
         <p><strong>Trade:</strong> ${tradeLabel}</p>
-        <p><strong>Slug:</strong> /t/${slug}</p>
+        <p><strong>Slug:</strong> /t/${finalSlug}</p>
       `
     ).catch((err) => console.error('Admin alert error:', err));
 
-    console.log('New tradie onboarded:', { business_name, slug, trade_category, email });
+    console.log('New tradie onboarded:', { business_name, slug: finalSlug, trade_category, email });
 
     return NextResponse.json({
       success: true,
-      slug,
+      slug: finalSlug,
       message: `Account created for ${business_name}!`,
     });
   } catch (error) {
     console.error('Onboard API error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to create account. Please try again.' },
+      { error: `Failed to create account: ${message}` },
       { status: 500 }
     );
   }
